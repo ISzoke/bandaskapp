@@ -40,7 +40,6 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-bandaskapp/
 
 # IDE
 .vscode/
