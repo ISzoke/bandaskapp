@@ -1,0 +1,1427 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row h-100">
+    <!-- Left Side - Heat Tank Visualization (2/3 width) -->
+    <div class="col-lg-8 col-md-12 h-100">
+        <div class="heat-tank">
+            
+            <!-- Top Temperature Field - DHW 1 -->
+            <div class="temperature-field top">
+                <div class="row">
+                    <div class="col-3">
+                        <h5 style="color: #ff6b6b;">DHW Top</h5>
+                        <div class="temperature-display">
+                            <span id="temp-dhw-1">{{ dhw_temp|floatformat:1 }}</span>°C
+                        </div>
+                        <small class="text-muted">Sensor: <span id="sensor-status-dhw-1" class="{% if dhw_sensor_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_online %}Online{% else %}Offline{% endif %}</span></small>
+                    </div>
+                    <div class="col-9 text-end">
+                        <div class="mini-graph" id="mini-graph-dhw-1">
+                            <canvas width="100%" height="100%"></canvas>
+                        </div>
+                        <div class="time-label" id="time-label-dhw-1"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Heating Water Fields -->
+            <div class="temperature-field heating">
+                <div class="row">
+                    <div class="col-3">
+                        <h5 style="color: #ffa500;">DHW Middle</h5>
+                        <div class="temperature-display">
+                            <span id="temp-heating-1">{{ dhw_temp_2|floatformat:1 }}</span>°C
+                        </div>
+                        <small class="text-muted">Sensor: <span id="sensor-status-heating-1" class="{% if dhw_sensor_2_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_2_online %}Online{% else %}Offline{% endif %}</span></small>
+                    </div>
+                    <div class="col-9 text-end">
+                        <div class="mini-graph" id="mini-graph-heating-1">
+                            <canvas width="100%" height="100%"></canvas>
+                        </div>
+                        <div class="time-label" id="time-label-heating-1"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="temperature-field heating">
+                <div class="row">
+                    <div class="col-3">
+                        <h5 style="color: #ffa500;">DHW Bottom</h5>
+                        <div class="temperature-display">
+                            <span id="temp-heating-2">{{ dhw_temp_3|floatformat:1 }}</span>°C
+                        </div>
+                        <small class="text-muted">Sensor: <span id="sensor-status-heating-2" class="{% if dhw_sensor_3_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_3_online %}Online{% else %}Offline{% endif %}</span></small>
+                    </div>
+                    <div class="col-9 text-end">
+                        <div class="mini-graph" id="mini-graph-heating-2">
+                            <canvas width="100%" height="100%"></canvas>
+                        </div>
+                        <div class="time-label" id="time-label-heating-2"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bottom Temperature Fields -->
+            <div class="temperature-field bottom">
+                <div class="row">
+                    <div class="col-3">
+                        <h5 style="color: #4ecdc4;">Bottom 1</h5>
+                        <div class="temperature-display">
+                            <span id="temp-bottom-1">{{ dhw_temp|floatformat:1|add:"-15" }}</span>°C
+                        </div>
+                        <small class="text-muted">Sensor: <span class="status-on">Online</span></small>
+                    </div>
+                    <div class="col-9 text-end">
+                        <div class="mini-graph" id="mini-graph-bottom-1">
+                            <canvas width="100%" height="100%"></canvas>
+                        </div>
+                        <div class="time-label" id="time-label-bottom-1"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="temperature-field bottom">
+                <div class="row">
+                    <div class="col-3">
+                        <h5 style="color: #4ecdc4;">Bottom 2</h5>
+                        <div class="temperature-display">
+                            <span id="temp-bottom-2">{{ dhw_temp|floatformat:1|add:"-20" }}</span>°C
+                        </div>
+                        <small class="text-muted">Sensor: <span class="status-on">Online</span></small>
+                    </div>
+                    <div class="col-9 text-end">
+                        <div class="mini-graph" id="mini-graph-bottom-2">
+                            <canvas width="100%" height="100%"></canvas>
+                        </div>
+                        <div class="time-label" id="time-label-bottom-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Side - Control Panel -->
+    <div class="col-lg-4 col-md-12">
+        <div class="control-panel">
+            <!-- Control Buttons -->
+            <div class="row mb-3">
+                <div class="col-6 mb-2">
+                    <button class="btn {% if control_mode == 'automatic' %}btn-success{% else %}btn-danger{% endif %} control-button w-100" onclick="toggleMode()">
+                        <strong id="mode-toggle-text">Mode {{ control_mode|upper }}</strong>
+                    </button>
+                </div>
+                <div class="col-6 mb-2">
+                    <button id="furnace-toggle-btn" class="btn {% if furnace_running %}btn-success{% else %}btn-danger{% endif %} control-button w-100" onclick="toggleFurnace()">
+                        <strong id="furnace-toggle-text">Furnace {% if furnace_running %}ON{% else %}OFF{% endif %}</strong>
+                        <div class="timer-display" id="furnace-timer">00:00</div>
+                    </button>
+                </div>
+                <div class="col-6 mb-2">
+                    <button class="btn btn-warning control-button w-100" onclick="syncRelays()">
+                        <strong>Sync Relays</strong>
+                    </button>
+                </div>
+                <div class="col-6 mb-2">
+                    <button id="pump-toggle-btn" class="btn btn-danger control-button w-100" onclick="togglePump()">
+                        <strong id="pump-toggle-text">Pump OFF</strong>
+                        <div class="timer-display" id="pump-timer">00:00</div>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Temperature Thresholds -->
+            <hr style="border-color: #444444;">
+            <div class="row temperature-thresholds">
+                <div class="col-12 mb-2">
+                    <h6 style="color: #00ff00;">Temperature Thresholds</h6>
+                </div>
+                <div class="d-flex align-items-start">
+                    <!-- Left side: Input controls -->
+                    <div class="flex-grow-1">
+                        <div class="row">
+                            <div class="col-6 mb-2">
+                                <label for="dhw-low" class="form-label">DHW Low (°C):</label>
+                                <div class="d-flex align-items-center">
+                                    <button class="btn btn-outline-warning btn-sm me-1" onclick="adjustThreshold('dhw-low', -1)" style="min-width: 50px; height: 40px; font-size: 1.2rem;">-1</button>
+                                    <input type="number" class="form-control" id="dhw-low" value="{{ dhw_temp_low|floatformat:1 }}" min="20" max="70" step="0.5" style="text-align: center;">
+                                    <button class="btn btn-outline-warning btn-sm ms-1" onclick="adjustThreshold('dhw-low', 1)" style="min-width: 50px; height: 40px; font-size: 1.2rem;">+1</button>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <label for="dhw-high" class="form-label">DHW High (°C):</label>
+                                <div class="d-flex align-items-center">
+                                    <button class="btn btn-outline-warning btn-sm me-1" onclick="adjustThreshold('dhw-high', -1)" style="min-width: 50px; height: 40px; font-size: 1.2rem;">-1</button>
+                                    <input type="number" class="form-control" id="dhw-high" value="{{ dhw_temp_high|floatformat:1 }}" min="30" max="80" step="0.5" style="text-align: center;">
+                                    <button class="btn btn-outline-warning btn-sm ms-1" onclick="adjustThreshold('dhw-high', 1)" style="min-width: 50px; height: 40px; font-size:1.2rem;">+1</button>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <label for="hhw-low" class="form-label">HHW Low (°C):</label>
+                                <div class="d-flex align-items-center">
+                                    <button class="btn btn-outline-warning btn-sm me-1" onclick="adjustThreshold('hhw-low', -1)" style="min-width: 50px; height: 40px; font-size: 1.2rem;">-1</button>
+                                    <input type="number" class="form-control" id="hhw-low" value="45.0" min="20" max="70" step="0.5" style="text-align: center;">
+                                    <button class="btn btn-outline-warning btn-sm ms-1" onclick="adjustThreshold('hhw-low', 1)" style="min-width: 50px; height: 40px; font-size: 1.2rem;">+1</button>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <label for="hhw-high" class="form-label">HHW High (°C):</label>
+                                <div class="d-flex align-items-center">
+                                    <button class="btn btn-outline-warning btn-sm me-1" onclick="adjustThreshold('hhw-high', -1)" style="min-width: 50px; height: 40px; font-size: 1.2rem;">-1</button>
+                                    <input type="number" class="form-control" id="hhw-high" value="65.0" min="30" max="80" step="0.5" style="text-align: center;">
+                                    <button class="btn btn-outline-warning btn-sm ms-1" onclick="adjustThreshold('hhw-high', 1)" style="min-width: 50px; height: 40px; font-size:1.2rem;">+1</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Right side: Update button -->
+                    <div class="ms-3 d-flex align-items-center">
+                        <button class="btn btn-info btn_update_thresholds" onclick="updateThresholds()">
+                            <span>Update</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Status Alert -->
+{% if not api_connected %}
+<div class="alert alert-danger api-disconnected" role="alert">
+    <strong>⚠️ API Connection Lost!</strong> Cannot communicate with hardware. 
+    Last successful connection: {{ last_reading|default:"Unknown" }}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Global storage for mini-graph data to persist across tab switches
+    // miniGraphData is declared in base.html
+    
+    // Enhanced data persistence using localStorage
+    const MINI_GRAPH_STORAGE_KEY = 'bandaskapp_mini_graph_data';
+    const MINI_GRAPH_TIMESTAMP_KEY = 'bandaskapp_mini_graph_timestamp';
+    
+    // Function to save mini-graph data to localStorage
+    function saveMiniGraphData() {
+        try {
+            const dataToSave = {};
+            Object.keys(miniGraphData).forEach(key => {
+                if (miniGraphData[key] && miniGraphData[key].data) {
+                    dataToSave[key] = {
+                        data: miniGraphData[key].data,
+                        zoomLevel: miniGraphData[key].getZoomLevel ? miniGraphData[key].getZoomLevel() : 0
+                    };
+                }
+            });
+            
+            localStorage.setItem(MINI_GRAPH_STORAGE_KEY, JSON.stringify(dataToSave));
+            localStorage.setItem(MINI_GRAPH_TIMESTAMP_KEY, Date.now().toString());
+            console.log('Mini-graph data saved to localStorage:', dataToSave);
+        } catch (error) {
+            console.error('Error saving mini-graph data to localStorage:', error);
+        }
+    }
+    
+    // Function to load mini-graph data from localStorage
+    function loadMiniGraphData() {
+        try {
+            const savedData = localStorage.getItem(MINI_GRAPH_STORAGE_KEY);
+            const timestamp = localStorage.getItem(MINI_GRAPH_TIMESTAMP_KEY);
+            
+            if (savedData && timestamp) {
+                const parsedData = JSON.parse(savedData);
+                const dataAge = Date.now() - parseInt(timestamp);
+                
+                // Only restore data if it's less than 1 hour old
+                if (dataAge < 3600000) {
+                    console.log('Restoring mini-graph data from localStorage:', parsedData);
+                    return parsedData;
+                } else {
+                    console.log('Mini-graph data is too old, clearing localStorage');
+                    localStorage.removeItem(MINI_GRAPH_STORAGE_KEY);
+                    localStorage.removeItem(MINI_GRAPH_TIMESTAMP_KEY);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading mini-graph data from localStorage:', error);
+        }
+        return {};
+    }
+    
+    // Function to restore mini-graph data to existing graphs
+    function restoreMiniGraphData(savedData) {
+        Object.keys(savedData).forEach(key => {
+            if (miniGraphData[key] && savedData[key].data) {
+                console.log(`Restoring ${key} mini-graph with ${savedData[key].data.length} data points`);
+                
+                // Restore data
+                miniGraphData[key].data.length = 0; // Clear existing data
+                miniGraphData[key].data.push(...savedData[key].data);
+                
+                // Restore zoom level if possible
+                if (savedData[key].zoomLevel !== undefined && miniGraphData[key].setZoomLevel) {
+                    miniGraphData[key].setZoomLevel(savedData[key].zoomLevel);
+                }
+                
+                // Redraw the graph immediately
+                if (miniGraphData[key].drawGraph) {
+                    miniGraphData[key].drawGraph();
+                }
+                
+                // Force resize and redraw to ensure proper rendering
+                if (miniGraphData[key].resizeCanvas) {
+                    setTimeout(() => {
+                        miniGraphData[key].resizeCanvas();
+                    }, 50);
+                }
+            }
+        });
+    }
+    
+    // Function to manually force render all mini-graphs (for debugging)
+    window.forceRenderAllMiniGraphs = function() {
+        console.log('Manual force render requested');
+        Object.keys(miniGraphData).forEach(key => {
+            if (miniGraphData[key]) {
+                if (miniGraphData[key].resizeCanvas) {
+                    miniGraphData[key].resizeCanvas();
+                }
+                if (miniGraphData[key].drawGraph) {
+                    miniGraphData[key].drawGraph();
+                }
+            }
+        });
+    };
+    
+    // Function to create a mini-graph
+    function createMiniGraph(canvasId, color, baseOffset = 0) {
+        const canvasContainer = document.getElementById(canvasId);
+        if (!canvasContainer) {
+            console.error(`Canvas container ${canvasId} not found`);
+            return null;
+        }
+        const canvas = canvasContainer.querySelector('canvas');
+        if (!canvas) {
+            console.error(`Canvas element not found in container ${canvasId}`);
+            return null;
+        }
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            console.error(`Could not get 2D context for canvas in ${canvasId}`);
+            return null;
+        }
+        console.log(`Successfully created mini graph for ${canvasId}`); // Debug log
+
+        // Initialize or retrieve data from global storage
+        // Extract the key from canvasId (remove 'mini-graph-' prefix)
+        const key = canvasId.replace('mini-graph-', '');
+        if (!miniGraphData[key]) {
+            miniGraphData[key] = [];
+        }
+        const data = miniGraphData[key];
+        
+        const ZOOM_LEVELS = [1, 2, 4, 8, 16, 32, 64, 128];
+        let currentZoomIndex = 0;
+
+        // Maximum data buffer size: 150,000 data points for production
+        const MAX_BUFFER_SIZE = 150000;
+
+        function getMaxDataPoints() {
+            // Always maintain the full buffer size, regardless of canvas width
+            return MAX_BUFFER_SIZE;
+        }
+
+        // Make canvas responsive to fit its container
+        function resizeCanvas() {
+            const col9Element = canvasContainer.closest('.col-9');
+            if (col9Element) {
+                const colWidth = col9Element.offsetWidth;
+                const temperatureField = canvasContainer.closest('.temperature-field');
+                const col3Element = temperatureField.querySelector('.col-3');
+                
+                if (col3Element) {
+                    // Simple height calculation: h5 + temperature-display + text-muted
+                    const h5Height = col3Element.querySelector('h5').offsetHeight;
+                    const tempDisplayHeight = col3Element.querySelector('.temperature-display').offsetHeight;
+                    const smallHeight = col3Element.querySelector('small').offsetHeight;
+                    
+                    // Sum of the three heights with some reduction for compactness
+                    const contentHeight = h5Height + tempDisplayHeight + smallHeight - 2; // Reduced from -8 to -2 for larger height
+                    
+                    // Set canvas size to match the col-9 width and the content height
+                    canvas.width = colWidth - 8; // Subtract padding from col-9
+                    canvas.height = contentHeight; // Larger height for better fit
+                    
+                    console.log(`Canvas resized to ${canvas.width}x${canvas.height} for ${canvasId} (col-9 width: ${colWidth}, h5: ${h5Height}, temp: ${tempDisplayHeight}, small: ${smallHeight}, total: ${contentHeight})`);
+                    
+                    // Immediately redraw the graph with existing data after resize
+                    if (data.length > 0) {
+                        console.log(`Redrawing ${canvasId} with ${data.length} data points after resize`);
+                        drawGraph();
+                    }
+                } else {
+                    // Fallback: use a reasonable height
+                    canvas.width = colWidth - 8;
+                    canvas.height = 80; // Default height
+                    console.log(`Canvas resized to ${canvas.width}x${canvas.height} for ${canvasId} (fallback height)`);
+                    
+                    // Immediately redraw the graph with existing data after resize
+                    if (data.length > 0) {
+                        console.log(`Redrawing ${canvasId} with ${data.length} data points after resize (fallback)`);
+                        drawGraph();
+                    }
+                }
+            } else {
+                // Fallback to container dimensions
+                const computedStyle = window.getComputedStyle(canvasContainer);
+                const width = parseInt(computedStyle.width) - 4;
+                const height = parseInt(computedStyle.height) - 4;
+                
+                canvas.width = width;
+                canvas.height = height;
+                
+                console.log(`Canvas resized to ${canvas.width}x${canvas.height} for ${canvasId} (fallback)`);
+                
+                // Immediately redraw the graph with existing data after resize
+                if (data.length > 0) {
+                    console.log(`Redrawing ${canvasId} with ${data.length} data points after resize (container fallback)`);
+                    drawGraph();
+                }
+            }
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Draw the scrolling real-time graph
+        function drawGraph() {
+            console.log(`drawGraph called for ${canvasId}, data length: ${data.length}, zoom: ${ZOOM_LEVELS[currentZoomIndex]}x`); // Debug log
+            
+            // Clear canvas completely
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Fill background
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw border
+            ctx.strokeStyle = '#444444';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(0, 0, canvas.width, canvas.height);
+            
+            if (data.length === 0) {
+                // Draw empty state indicator
+                ctx.fillStyle = '#666666';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('No data yet', canvas.width / 2, canvas.height / 2);
+                return;
+            }
+            
+            // Y-axis range: 15°C to 95°C
+            const minY = 15;
+            const maxY = 95;
+            const yRange = maxY - minY;
+            
+            // Calculate visible data points based on zoom level
+            const zoomLevel = ZOOM_LEVELS[currentZoomIndex];
+            const visibleWidth = canvas.width;
+            const dataPointsPerPixel = zoomLevel;
+            // Get the most recent data points that fit in the visible area (newest data on left)
+            const maxVisiblePoints = Math.floor(visibleWidth * dataPointsPerPixel);
+            const startIndex = Math.max(0, data.length - maxVisiblePoints);
+            const visibleData = data.slice(startIndex);
+            
+            console.log(`${canvasId} drawing: ${visibleData.length} visible points (startIndex: ${startIndex}, total: ${data.length})`);
+            if (visibleData.length > 0) {
+                console.log(`${canvasId} data range: ${visibleData[visibleData.length-1]}°C (oldest, right) to ${visibleData[0]}°C (newest, left)`);
+            }
+            
+            if (visibleData.length < 2) {
+                // Draw single point or empty state
+                if (visibleData.length === 1) {
+                    const y = canvas.height - ((visibleData[0] - minY) / yRange) * canvas.height;
+                    ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(canvas.width / 2, y, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+                return;
+            }
+            
+            // Draw grid lines
+            ctx.strokeStyle = '#333333';
+            ctx.lineWidth = 0.5;
+            
+            // Horizontal grid lines (every 10°C)
+            for (let temp = 20; temp <= 90; temp += 10) {
+                const y = canvas.height - ((temp - minY) / yRange) * canvas.height;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            // Draw temperature line from left to right (newest data on left, oldest on right)
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            let firstPoint = true;
+            for (let i = 0; i < visibleData.length; i++) {
+                // X position: left to right (newest data on left, oldest on right)
+                // Reverse the order: newest data (last in array) goes on left
+                const x = ((visibleData.length - 1 - i) / dataPointsPerPixel);
+                const y = canvas.height - ((visibleData[i] - minY) / yRange) * canvas.height;
+                
+                if (firstPoint) {
+                    ctx.moveTo(x, y);
+                    firstPoint = false;
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            
+            ctx.stroke();
+            
+            // Draw data points from left to right
+            ctx.fillStyle = color;
+            for (let i = 0; i < visibleData.length; i++) {
+                const x = ((visibleData.length - 1 - i) / dataPointsPerPixel);
+                const y = canvas.height - ((visibleData[i] - minY) / yRange) * canvas.height;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, 1.5, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+            
+            // Draw zoom indicator (top right)
+            ctx.fillStyle = '#666666';
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText(`${ZOOM_LEVELS[currentZoomIndex]}x`, canvas.width - 5, 15);
+            
+            // Update time duration indicator below the graph
+            const samplingRate = 5; // 5 seconds per sample
+            const totalDataPoints = visibleData.length;
+            const totalSeconds = totalDataPoints * samplingRate;
+            const totalHours = totalSeconds / 3600;
+            
+            // Format time duration
+            let timeLabel;
+            if (totalHours >= 1) {
+                timeLabel = `${totalHours.toFixed(1)}h`;
+            } else {
+                const totalMinutes = totalSeconds / 60;
+                timeLabel = `${totalMinutes.toFixed(0)}m`;
+            }
+            
+            // Update the time label element
+            const timeLabelElement = document.getElementById(`time-label-${key}`);
+            if (timeLabelElement) {
+                timeLabelElement.textContent = timeLabel;
+            }
+        }
+
+        // Draw the graph immediately after creation
+        drawGraph();
+
+        function updateData(temperature) {
+            // Add new data point to the right (end of array) - will appear on left side of graph
+            data.push(temperature);
+            
+            // Implement FIFO: if buffer is full, remove oldest data from the left (beginning)
+            if (data.length > MAX_BUFFER_SIZE) {
+                const removedValue = data.shift(); // Remove first element (oldest data)
+                console.log(`${canvasId} FIFO: removed oldest value ${removedValue}°C, buffer now ${data.length}/${MAX_BUFFER_SIZE}`);
+            }
+            
+            // Debug: Log buffer status occasionally (every 1000 updates)
+            if (data.length % 1000 === 0) {
+                console.log(`${canvasId} buffer: ${data.length}/${MAX_BUFFER_SIZE} points (${(data.length/MAX_BUFFER_SIZE*100).toFixed(1)}% full)`);
+            }
+            
+            drawGraph();
+            
+            // Auto-save data to localStorage after each update
+            setTimeout(saveMiniGraphData, 100);
+        }
+
+        function clearData() {
+            data.length = 0;
+            drawGraph();
+        }
+
+        function zoomOut() {
+            if (currentZoomIndex < ZOOM_LEVELS.length - 1) {
+                currentZoomIndex++;
+                console.log(`Zoomed out to ${ZOOM_LEVELS[currentZoomIndex]}x for ${canvasId}`);
+                drawGraph();
+            }
+        }
+
+        function zoomIn() {
+            if (currentZoomIndex > 0) {
+                currentZoomIndex--;
+                console.log(`Zoomed in to ${ZOOM_LEVELS[currentZoomIndex]}x for ${canvasId}`);
+                drawGraph();
+            }
+        }
+
+        canvas.addEventListener('click', function(event) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const canvasWidth = canvas.width;
+            if (x < canvasWidth / 2) {
+                zoomOut();
+            } else {
+                zoomIn();
+            }
+        });
+
+        canvas.addEventListener('touchstart', function(event) {
+            event.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const touch = event.touches[0];
+            const x = touch.clientX - rect.left;
+            const canvasWidth = canvas.width;
+            if (x < canvasWidth / 2) {
+                zoomOut();
+            } else {
+                zoomIn();
+            }
+        });
+
+        return {
+            canvas: canvas,
+            data: data,
+            updateData: updateData,
+            clearData: clearData,
+            zoomIn: zoomIn,
+            zoomOut: zoomOut,
+            getZoomLevel: () => ZOOM_LEVELS[currentZoomIndex],
+            setZoomLevel: function(level) {
+                const index = ZOOM_LEVELS.indexOf(level);
+                if (index !== -1) {
+                    currentZoomIndex = index;
+                    console.log(`Zoom level set to ${level}x for ${canvasId}`);
+                    drawGraph();
+                }
+            },
+            drawGraph: drawGraph, // Expose drawGraph for persistence
+            drawTestPattern: function() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`Test: ${canvasId}`, canvas.width / 2, canvas.height / 2);
+            }
+        };
+    }
+    
+    // Initialize mini graphs
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOMContentLoaded event fired'); // Debug log
+        
+        // Load existing mini-graph data from localStorage
+        const savedData = loadMiniGraphData();
+        if (Object.keys(savedData).length > 0) {
+            console.log('Restoring mini-graph data from localStorage:', savedData);
+            restoreMiniGraphData(savedData);
+        } else {
+            console.log('No existing mini-graph data found in localStorage, starting fresh.');
+        }
+        
+        // Check if canvas elements exist
+        const canvasElements = {
+            'dhw-1': document.getElementById('mini-graph-dhw-1'),
+            'heating-1': document.getElementById('mini-graph-heating-1'),
+            'heating-2': document.getElementById('mini-graph-heating-2'),
+            'bottom-1': document.getElementById('mini-graph-bottom-1'),
+            'bottom-2': document.getElementById('mini-graph-bottom-2')
+        };
+        
+        console.log('Canvas elements found:', canvasElements); // Debug log
+        
+        // Only create mini graphs for elements that exist AND don't already exist
+        Object.keys(canvasElements).forEach(key => {
+            if (canvasElements[key] && !miniGraphData[key]) {
+                console.log(`Creating mini graph for ${key}`); // Debug log
+                let miniGraph = null;
+                
+                if (key === 'dhw-1') {
+                    miniGraph = createMiniGraph('mini-graph-' + key, '#ff6b6b', 0);
+                } else if (key.startsWith('heating')) {
+                    const offset = key === 'heating-1' ? -5 : -10;
+                    miniGraph = createMiniGraph('mini-graph-' + key, '#ffa500', offset);
+                } else if (key.startsWith('bottom')) {
+                    const offset = key === 'bottom-1' ? -15 : -20;
+                    miniGraph = createMiniGraph('mini-graph-' + key, '#4ecdc4', offset);
+                }
+                
+                if (miniGraph) {
+                    miniGraphData[key] = miniGraph; // Store in global data object
+                    console.log(`Mini graph for ${key} created successfully`);
+                    
+                    // Restore data if available
+                    if (savedData[key] && savedData[key].data) {
+                        console.log(`Restoring ${key} data: ${savedData[key].data.length} points`);
+                        miniGraph.data.length = 0;
+                        miniGraph.data.push(...savedData[key].data);
+                        
+                        if (savedData[key].zoomLevel !== undefined) {
+                            miniGraph.setZoomLevel(savedData[key].zoomLevel);
+                        }
+                        
+                        // Force immediate render with restored data
+                        miniGraph.drawGraph();
+                        
+                        // Force resize after a short delay to ensure proper rendering
+                        setTimeout(() => {
+                            if (miniGraph.resizeCanvas) {
+                                miniGraph.resizeCanvas();
+                            }
+                        }, 100);
+                    }
+                } else {
+                    console.error(`Failed to create mini graph for ${key}`);
+                }
+            } else if (miniGraphData[key]) {
+                console.log(`Mini graph for ${key} already exists, preserving data`);
+                // Mini graph already exists, just redraw it with existing data
+                if (miniGraphData[key].drawGraph) {
+                    miniGraphData[key].drawGraph();
+                }
+            } else {
+                console.log(`Canvas element for ${key} not found`); // Debug log
+            }
+        });
+        
+        console.log('Mini graphs status:', Object.keys(miniGraphData)); // Debug log
+        
+        // Don't clear existing data - preserve it across tab switches
+        if (Object.keys(miniGraphData).length > 0) {
+            console.log('Preserving existing mini graph data across tab switch');
+        } else {
+            console.log('No existing mini graphs found, starting fresh');
+        }
+        
+        // Set up periodic auto-save every 30 seconds
+        setInterval(saveMiniGraphData, 30000);
+        
+        // Save data when page becomes hidden (switching tabs)
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                console.log('Page hidden, saving mini-graph data');
+                saveMiniGraphData();
+            } else {
+                console.log('Page visible, checking for data updates');
+                // Data will be restored from localStorage if available
+            }
+        });
+        
+        // Save data when page is about to unload
+        window.addEventListener('beforeunload', function() {
+            console.log('Page unloading, saving mini-graph data');
+            saveMiniGraphData();
+        });
+        
+        // Force resize after a short delay to ensure CSS is applied
+        setTimeout(() => {
+            console.log('Forcing mini-graph resize...');
+            Object.keys(miniGraphData).forEach(key => {
+                if (miniGraphData[key] && miniGraphData[key].resizeCanvas) {
+                    miniGraphData[key].resizeCanvas();
+                }
+            });
+        }, 100);
+        
+        // Global resize handler for all mini-graphs
+        window.addEventListener('resize', () => {
+            console.log('Window resized, updating all mini-graphs...');
+            setTimeout(() => {
+                Object.keys(miniGraphData).forEach(key => {
+                    if (miniGraphData[key] && miniGraphData[key].resizeCanvas) {
+                        miniGraphData[key].resizeCanvas();
+                    }
+                });
+            }, 100);
+        });
+        
+        // Function to force immediate rendering of all mini-graphs
+        function forceRenderAllMiniGraphs() {
+            console.log('Forcing immediate render of all mini-graphs');
+            Object.keys(miniGraphData).forEach(key => {
+                if (miniGraphData[key]) {
+                    if (miniGraphData[key].resizeCanvas) {
+                        miniGraphData[key].resizeCanvas();
+                    }
+                    if (miniGraphData[key].drawGraph) {
+                        miniGraphData[key].drawGraph();
+                    }
+                }
+            });
+        }
+        
+        // Force immediate render after a short delay
+        setTimeout(forceRenderAllMiniGraphs, 200);
+        
+        // Also force render when page becomes visible
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                console.log('Page became visible, forcing mini-graph render');
+                setTimeout(forceRenderAllMiniGraphs, 100);
+            }
+        });
+        
+        console.log('Mini graphs initialized with data persistence');
+    });
+    
+    // Fallback initialization - try again when page is fully loaded
+    window.addEventListener('load', function() {
+        console.log('Window load event fired'); // Debug log
+        if (Object.keys(miniGraphData).length === 0) {
+            console.log('Mini graphs not initialized, trying again...'); // Debug log
+            // Force re-initialization only if no graphs exist
+            const canvasElements = {
+                'dhw-1': document.getElementById('mini-graph-dhw-1'),
+                'heating-1': document.getElementById('mini-graph-heating-1'),
+                'heating-2': document.getElementById('mini-graph-heating-2'),
+                'bottom-1': document.getElementById('mini-graph-bottom-1'),
+                'bottom-2': document.getElementById('mini-graph-bottom-2')
+            };
+            
+            Object.keys(canvasElements).forEach(key => {
+                if (canvasElements[key] && !miniGraphData[key]) {
+                    console.log(`Creating mini graph for ${key} (fallback)`); // Debug log
+                    if (key === 'dhw-1') {
+                        miniGraphData[key] = createMiniGraph('mini-graph-' + key, '#ff6b6b', 0);
+                    } else if (key.startsWith('heating')) {
+                        const offset = key === 'heating-1' ? -5 : -10;
+                        miniGraphData[key] = createMiniGraph('mini-graph-' + key, '#ffa500', offset);
+                    } else if (key.startsWith('bottom')) {
+                        const offset = key === 'bottom-1' ? -15 : -20;
+                        miniGraphData[key] = createMiniGraph('mini-graph-' + key, '#4ecdc4', offset);
+                    }
+                }
+            });
+            
+            if (Object.keys(miniGraphData).length > 0) {
+                console.log('Fallback initialization successful');
+            }
+        } else {
+            console.log('Mini graphs already exist, preserving data across tab switch');
+            // Redraw existing graphs with their data
+            Object.keys(miniGraphData).forEach(key => {
+                if (miniGraphData[key] && miniGraphData[key].drawGraph) {
+                    miniGraphData[key].drawGraph();
+                }
+            });
+        }
+    });
+    
+    // Function to update mini graphs with real data
+    function updateMiniGraphs() {
+        // Get current temperatures from all sensors
+        const dhwTemp = parseFloat(document.getElementById('temp-dhw-1').textContent);
+        const dhwTemp2 = parseFloat(document.getElementById('temp-heating-1').textContent);
+        const dhwTemp3 = parseFloat(document.getElementById('temp-heating-2').textContent);
+        
+        console.log('updateMiniGraphs called, DHW temps:', dhwTemp, dhwTemp2, dhwTemp3); // Debug log
+        
+        // Update DHW Top mini graph
+        if (!isNaN(dhwTemp) && miniGraphData['dhw-1']) {
+            console.log('Updating dhw-1 mini graph with:', dhwTemp); // Debug log
+            miniGraphData['dhw-1'].updateData(dhwTemp);
+        }
+        
+        // Update DHW Middle mini graph
+        if (!isNaN(dhwTemp2) && miniGraphData['heating-1']) {
+            console.log('Updating heating-1 mini graph with:', dhwTemp2); // Debug log
+            miniGraphData['heating-1'].updateData(dhwTemp2);
+        }
+        
+        // Update DHW Bottom mini graph
+        if (!isNaN(dhwTemp3) && miniGraphData['heating-2']) {
+            console.log('Updating heating-2 mini graph with:', dhwTemp3); // Debug log
+            miniGraphData['heating-2'].updateData(dhwTemp3);
+        }
+        
+        // Update bottom graphs (still using calculated values for now)
+        if (!isNaN(dhwTemp)) {
+            if (miniGraphData['bottom-1']) {
+                console.log('Updating bottom-1 mini graph with:', dhwTemp - 15); // Debug log
+                miniGraphData['bottom-1'].updateData(dhwTemp - 15);
+            }
+            if (miniGraphData['bottom-2']) {
+                console.log('Updating bottom-2 mini graph with:', dhwTemp - 20); // Debug log
+                miniGraphData['bottom-2'].updateData(dhwTemp - 20);
+            }
+        }
+    }
+    
+    // Function to refresh mini graphs with current temperature data
+    function refreshMiniGraphs() {
+        console.log('refreshMiniGraphs called - preserving existing data');
+        
+        // Don't clear existing data - just redraw with current data
+        Object.keys(miniGraphData).forEach(key => {
+            if (miniGraphData[key] && miniGraphData[key].drawGraph) {
+                console.log(`Redrawing ${key} mini graph with existing data`);
+                miniGraphData[key].drawGraph();
+            }
+        });
+        
+        console.log('Mini graphs refreshed while preserving data');
+    }
+    
+    // Make functions globally available so they can be called from base template
+    window.updateMiniGraphs = updateMiniGraphs;
+    window.refreshMiniGraphs = refreshMiniGraphs;
+    
+    // Test function to manually add data to mini-graphs
+    window.testMiniGraphData = function() {
+        console.log('Testing mini graph data flow...');
+        
+        // Get current DHW temperature
+        const dhwTemp = parseFloat(document.getElementById('temp-dhw-1').textContent);
+        console.log('Current DHW temp:', dhwTemp);
+        
+        if (!isNaN(dhwTemp)) {
+            // Manually add data to each mini graph
+            Object.keys(miniGraphData).forEach(key => {
+                if (miniGraphData[key]) {
+                    console.log(`Adding data to ${key} mini graph`);
+                    miniGraphData[key].updateData(dhwTemp);
+                }
+            });
+            console.log('Data added to all mini graphs');
+        } else {
+            console.log('DHW temperature not available, using test value 50');
+            // Use test value if no real temperature
+            Object.keys(miniGraphData).forEach(key => {
+                if (miniGraphData[key]) {
+                    console.log(`Adding test data to ${key} mini graph`);
+                    miniGraphData[key].updateData(50);
+                }
+            });
+        }
+    };
+    
+    // Function to check mini-graph dimensions
+    window.checkMiniGraphDimensions = function() {
+        console.log('Checking mini-graph dimensions...');
+        
+        Object.keys(miniGraphData).forEach(key => {
+            if (miniGraphData[key]) {
+                const container = document.getElementById('mini-graph-' + key);
+                const canvas = miniGraphData[key].canvas;
+                
+                console.log(`${key}:`);
+                console.log(`  Container CSS width: ${getComputedStyle(container).width}`);
+                console.log(`  Container CSS height: ${getComputedStyle(container).height}`);
+                console.log(`  Canvas width: ${canvas.width}`);
+                console.log(`  Canvas height: ${canvas.height}`);
+                console.log(`  Container offsetWidth: ${container.offsetWidth}`);
+                console.log(`  Container offsetHeight: ${container.offsetHeight}`);
+            }
+        });
+    };
+    
+    // Test function for debugging mini graphs
+    function testMiniGraphs() {
+        console.log('Testing mini graphs...');
+        console.log('Available mini graphs:', Object.keys(miniGraphData));
+        
+        // Test with sample data
+        const testTemp = 50;
+        Object.keys(miniGraphData).forEach(key => {
+            if (miniGraphData[key]) {
+                console.log(`Testing ${key} mini graph`);
+                miniGraphData[key].updateData(testTemp);
+            }
+        });
+        
+        console.log('Mini graph test completed');
+    }
+    
+    // Make test function globally available
+    window.testMiniGraphs = testMiniGraphs;
+    
+    // Manual initialization function
+    window.initializeMiniGraphsManually = function() {
+        console.log('Manual initialization of mini graphs...');
+        
+        const canvasElements = {
+            'dhw-1': document.getElementById('mini-graph-dhw-1'),
+            'heating-1': document.getElementById('mini-graph-heating-1'),
+            'heating-2': document.getElementById('mini-graph-heating-2'),
+            'bottom-1': document.getElementById('mini-graph-bottom-1'),
+            'bottom-2': document.getElementById('mini-graph-bottom-2')
+        };
+        
+        console.log('Canvas elements found:', canvasElements);
+        
+        // Clear existing mini graphs
+        Object.keys(miniGraphData).forEach(key => {
+            delete miniGraphData[key];
+        });
+        
+        // Create new mini graphs
+        Object.keys(canvasElements).forEach(key => {
+            if (canvasElements[key]) {
+                console.log(`Creating mini graph for ${key}`);
+                let miniGraph = null;
+                
+                if (key === 'dhw-1') {
+                    miniGraph = createMiniGraph('mini-graph-' + key, '#ff6b6b', 0);
+                } else if (key.startsWith('heating')) {
+                    const offset = key === 'heating-1' ? -5 : -10;
+                    miniGraph = createMiniGraph('mini-graph-' + key, '#ffa500', offset);
+                } else if (key.startsWith('bottom')) {
+                    const offset = key === 'bottom-1' ? -15 : -20;
+                    miniGraph = createMiniGraph('mini-graph-' + key, '#4ecdc4', offset);
+                }
+                
+                if (miniGraph) {
+                    miniGraphData[key] = miniGraph;
+                    console.log(`Mini graph for ${key} created successfully`);
+                } else {
+                    console.error(`Failed to create mini graph for ${key}`);
+                }
+            }
+        });
+        
+        console.log('Mini graphs created:', Object.keys(miniGraphData));
+        
+        // Populate with test data
+        if (Object.keys(miniGraphData).length > 0) {
+            // Start with empty graphs, no test data
+            Object.keys(miniGraphData).forEach(key => {
+                miniGraphData[key].clearData();
+            });
+            console.log('Mini graphs cleared and ready for real data');
+        }
+        
+        return Object.keys(miniGraphData);
+    };
+    
+    // Additional debugging functions
+    window.debugMiniGraph = function(graphName) {
+        if (miniGraphData[graphName]) {
+            console.log(`Debugging ${graphName}:`, miniGraphData[graphName]);
+            console.log(`Canvas:`, miniGraphData[graphName].canvas);
+            console.log(`Data:`, miniGraphData[graphName].data);
+            miniGraphData[graphName].drawTestPattern();
+        } else {
+            console.log(`Mini graph ${graphName} not found. Available:`, Object.keys(miniGraphData));
+        }
+    };
+    
+    window.forceUpdateMiniGraph = function(graphName, temperature) {
+        if (miniGraphData[graphName]) {
+            console.log(`Forcing update of ${graphName} with temperature ${temperature}`);
+            miniGraphData[graphName].updateData(temperature);
+        } else {
+            console.log(`Mini graph ${graphName} not found`);
+        }
+    };
+    
+    // Function to adjust thresholds with -1/+1 buttons
+    function adjustThreshold(inputId, adjustment) {
+        const input = document.getElementById(inputId);
+        const currentValue = parseFloat(input.value);
+        const newValue = currentValue + adjustment;
+        
+        // Apply min/max constraints
+        if (inputId === 'dhw-low') {
+            input.value = (Math.max(20, Math.min(70, newValue))).toFixed(1);
+        } else if (inputId === 'dhw-high') {
+            input.value = (Math.max(30, Math.min(80, newValue))).toFixed(1);
+        } else if (inputId === 'hhw-low') {
+            input.value = (Math.max(20, Math.min(70, newValue))).toFixed(1);
+        } else if (inputId === 'hhw-high') {
+            input.value = (Math.max(30, Math.min(80, newValue))).toFixed(1);
+        }
+    }
+    
+    // Function to ensure all threshold inputs show one decimal place
+    function formatThresholdInputs() {
+        const dhwLowInput = document.getElementById('dhw-low');
+        const dhwHighInput = document.getElementById('dhw-high');
+        const hhwLowInput = document.getElementById('hhw-low');
+        const hhwHighInput = document.getElementById('hhw-high');
+        
+        if (dhwLowInput && dhwLowInput.value) {
+            dhwLowInput.value = parseFloat(dhwLowInput.value).toFixed(1);
+        }
+        if (dhwHighInput && dhwHighInput.value) {
+            dhwHighInput.value = parseFloat(dhwHighInput.value).toFixed(1);
+        }
+        if (hhwLowInput && hhwLowInput.value) {
+            hhwLowInput.value = parseFloat(hhwLowInput.value).toFixed(1);
+        }
+        if (hhwHighInput && hhwHighInput.value) {
+            hhwHighInput.value = parseFloat(hhwHighInput.value).toFixed(1);
+        }
+    }
+    
+    // Format threshold inputs when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Wait a bit for the template values to be rendered
+        setTimeout(formatThresholdInputs, 100);
+    });
+    
+    // Function to toggle mode
+    async function toggleMode() {
+        try {
+            const response = await fetch('/control/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: 'action=toggle_mode'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    setTimeout(() => { location.reload(); }, 1000);
+                }
+            }
+        } catch (error) {
+            console.error('Error toggling mode:', error);
+        }
+    }
+
+    // Function to sync relays
+    async function syncRelays() {
+        try {
+            // This would typically call an API to sync relay states
+            // For now, just reload the page to refresh status
+            location.reload();
+        } catch (error) {
+            console.error('Error syncing relays:', error);
+        }
+    }
+    
+    // Timer management for independent device timers
+    const timers = {
+        furnace: {
+            startTime: null,
+            isRunning: false,
+            interval: null,
+            lastState: null // Track the last known state
+        },
+        pump: {
+            startTime: null,
+            isRunning: false,
+            interval: null,
+            lastState: null // Track the last known state
+        }
+    };
+
+    function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function startTimer(device) {
+        if (timers[device].interval) {
+            clearInterval(timers[device].interval);
+        }
+        timers[device].startTime = Date.now();
+        timers[device].isRunning = true;
+        timers[device].interval = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - timers[device].startTime) / 1000);
+            const timerElement = document.getElementById(`${device}-timer`);
+            if (timerElement) {
+                timerElement.textContent = formatTime(elapsed);
+            }
+        }, 1000);
+        console.log(`${device} timer started`);
+    }
+
+    function stopTimer(device) {
+        if (timers[device].interval) {
+            clearInterval(timers[device].interval);
+            timers[device].interval = null;
+        }
+        timers[device].isRunning = false;
+        const timerElement = document.getElementById(`${device}-timer`);
+        if (timerElement) {
+            timerElement.textContent = '00:00';
+        }
+        console.log(`${device} timer stopped and reset`);
+    }
+
+    function resetTimer(device) {
+        stopTimer(device);
+        startTimer(device);
+    }
+
+    // Function to check if device state has changed and reset timer if needed
+    function checkDeviceStateChange(device) {
+        const deviceBtn = document.getElementById(`${device}-toggle-btn`);
+        if (!deviceBtn) {
+            console.log(`${device} button not found, skipping state check`);
+            return;
+        }
+        
+        const currentState = deviceBtn.classList.contains('btn-success'); // true = ON, false = OFF
+        
+        // If this is the first check, just record the state
+        if (timers[device].lastState === null) {
+            console.log(`${device} initial state check: ${currentState ? 'ON' : 'OFF'}`);
+            timers[device].lastState = currentState;
+            startTimer(device); // Start timer for initial state
+            return;
+        }
+        
+        // If state has changed, reset the timer
+        if (timers[device].lastState !== currentState) {
+            console.log(`${device} state changed from ${timers[device].lastState ? 'ON' : 'OFF'} to ${currentState ? 'ON' : 'OFF'}, resetting ${device} timer only`);
+            timers[device].lastState = currentState;
+            resetTimer(device);
+        }
+    }
+
+    // Function to toggle furnace
+    async function toggleFurnace() {
+        try {
+            const furnaceBtn = document.getElementById('furnace-toggle-btn');
+            const furnaceText = document.getElementById('furnace-toggle-text');
+            const isCurrentlyRunning = furnaceBtn.classList.contains('btn-success');
+            
+            const action = isCurrentlyRunning ? 'manual_furnace_off' : 'manual_furnace_on';
+            
+            const response = await fetch('/control/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: `action=${action}`
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    // Reset furnace timer immediately when button is clicked
+                    console.log('Furnace button clicked - resetting furnace timer only');
+                    resetTimer('furnace');
+                    timers.furnace.lastState = !isCurrentlyRunning;
+                    
+                    // Update button state
+                    if (isCurrentlyRunning) {
+                        furnaceBtn.className = 'btn btn-danger control-button w-100';
+                        furnaceText.textContent = 'Furnace OFF';
+                    } else {
+                        furnaceBtn.className = 'btn btn-success control-button w-100';
+                        furnaceText.textContent = 'Furnace ON';
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error toggling furnace:', error);
+        }
+    }
+    
+    // Function to toggle pump
+    async function togglePump() {
+        try {
+            const pumpBtn = document.getElementById('pump-toggle-btn');
+            const pumpText = document.getElementById('pump-toggle-text');
+            const isCurrentlyRunning = pumpBtn.classList.contains('btn-success');
+            
+            const action = isCurrentlyRunning ? 'pump_off' : 'pump_on';
+            
+            const response = await fetch('/control/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: `action=${action}`
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    // Reset pump timer immediately when button is clicked
+                    console.log('Pump button clicked - resetting pump timer only');
+                    resetTimer('pump');
+                    timers.pump.lastState = !isCurrentlyRunning;
+                    
+                    // Update button state
+                    if (isCurrentlyRunning) {
+                        pumpBtn.className = 'btn btn-danger control-button w-100';
+                        pumpText.textContent = 'Pump OFF';
+                    } else {
+                        pumpBtn.className = 'btn btn-success control-button w-100';
+                        pumpText.textContent = 'Pump ON';
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error toggling pump:', error);
+        }
+    }
+
+    // Function to manually check device state changes (can be called from status updates)
+    function checkDeviceStateChanges() {
+        checkDeviceStateChange('furnace');
+        checkDeviceStateChange('pump');
+    }
+    
+    // Make the function globally available so it can be called from base.html
+    window.checkDeviceStateChanges = checkDeviceStateChanges;
+    
+    // Function to initialize timers based on current device states
+    function initializeTimers() {
+        console.log('Initializing independent device timers');
+        
+        // Check current states and start timers
+        checkDeviceStateChange('furnace');
+        checkDeviceStateChange('pump');
+        
+        // Set up frequent state checking to detect backend changes (every 2 seconds)
+        setInterval(() => {
+            checkDeviceStateChange('furnace');
+            checkDeviceStateChange('pump');
+        }, 2000);
+    }
+    
+    // Initialize timers when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(initializeTimers, 500); // Small delay to ensure elements are loaded
+    });
+    
+    // Helper function to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Function to preserve mini-graph data across tab switches
+    function preserveMiniGraphData() {
+        console.log('Preserving mini-graph data across tab switch');
+        
+        // Check if mini-graphs already exist and have data
+        Object.keys(miniGraphData).forEach(key => {
+            if (miniGraphData[key] && miniGraphData[key].data && miniGraphData[key].data.length > 0) {
+                console.log(`Preserving ${key} mini graph with ${miniGraphData[key].data.length} data points`);
+                
+                // Redraw the graph with existing data
+                if (miniGraphData[key].drawGraph) {
+                    miniGraphData[key].drawGraph();
+                }
+            }
+        });
+    }
+    
+    // Call this function when the page becomes visible (returning from another tab)
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+            console.log('Page became visible, preserving mini-graph data');
+            preserveMiniGraphData();
+        }
+    });
+    
+    // Also preserve data when the page is focused
+    window.addEventListener('focus', function() {
+        console.log('Window focused, preserving mini-graph data');
+        preserveMiniGraphData();
+    });
+
+    // Function to manually save mini-graph data (for debugging)
+    window.saveMiniGraphDataNow = function() {
+        console.log('Manual save requested');
+        saveMiniGraphData();
+    };
+    
+    // Function to clear all mini-graph data (for debugging)
+    window.clearAllMiniGraphData = function() {
+        console.log('Clearing all mini-graph data');
+        Object.keys(miniGraphData).forEach(key => {
+            if (miniGraphData[key]) {
+                miniGraphData[key].clearData();
+            }
+        });
+        localStorage.removeItem(MINI_GRAPH_STORAGE_KEY);
+        localStorage.removeItem(MINI_GRAPH_TIMESTAMP_KEY);
+        console.log('All mini-graph data cleared');
+    };
+    
+    // Function to show mini-graph data status (for debugging)
+    window.showMiniGraphStatus = function() {
+        console.log('Mini-graph data status:');
+        Object.keys(miniGraphData).forEach(key => {
+            if (miniGraphData[key]) {
+                const dataLength = miniGraphData[key].data.length;
+                const maxBuffer = 131072;
+                const percentage = (dataLength / maxBuffer * 100).toFixed(1);
+                console.log(`${key}: ${dataLength}/${maxBuffer} data points (${percentage}% full), zoom: ${miniGraphData[key].getZoomLevel()}x`);
+            }
+        });
+        
+        const savedData = localStorage.getItem(MINI_GRAPH_STORAGE_KEY);
+        if (savedData) {
+            const parsed = JSON.parse(savedData);
+            console.log('localStorage data summary:');
+            Object.keys(parsed).forEach(key => {
+                const dataLength = parsed[key].data ? parsed[key].data.length : 0;
+                console.log(`  ${key}: ${dataLength} points saved`);
+            });
+        } else {
+            console.log('No data in localStorage');
+        }
+    };
+
+    // Function to manually test data plotting (for debugging)
+    window.testDataPlotting = function() {
+        console.log('Testing data plotting...');
+        Object.keys(miniGraphData).forEach(key => {
+            if (miniGraphData[key]) {
+                console.log(`${key}: ${miniGraphData[key].data.length} data points`);
+                if (miniGraphData[key].data.length > 0) {
+                    console.log(`${key} data:`, miniGraphData[key].data.slice(-5)); // Last 5 points
+                }
+                if (miniGraphData[key].drawGraph) {
+                    console.log(`Drawing ${key} graph...`);
+                    miniGraphData[key].drawGraph();
+                }
+            }
+        });
+    };
+    
+    // Function to add test data to all graphs (for debugging)
+    window.addTestData = function() {
+        console.log('Adding test data to all graphs...');
+        const testTemp = 50;
+        Object.keys(miniGraphData).forEach(key => {
+            if (miniGraphData[key]) {
+                console.log(`Adding test data to ${key}`);
+                miniGraphData[key].updateData(testTemp);
+            }
+        });
+    };
+</script>
+{% endblock %}

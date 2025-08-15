@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row h-100">
+    <div class="col-12">
+        <h2 class="text-center mb-4" style="color: #00ff00;">⚙️ System Settings</h2>
+        <p class="text-center text-muted mb-4">Configure BandaskApp parameters</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h4>🌡️ Temperature Thresholds</h4>
+            </div>
+            <div class="card-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="dhw-low-setting" class="form-label">DHW Low Threshold (°C):</label>
+                        <input type="number" class="form-control" id="dhw-low-setting" 
+                               value="{{ system_state.dhw_temp_low }}" min="20" max="70" step="0.5">
+                        <div class="form-text text-muted">Furnace starts when temperature drops below this value</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="dhw-high-setting" class="form-label">DHW High Threshold (°C):</label>
+                        <input type="number" class="form-control" id="dhw-high-setting" 
+                               value="{{ system_state.dhw_temp_high }}" min="30" max="80" step="0.5">
+                        <div class="form-text text-muted">Furnace stops when temperature reaches this value</div>
+                    </div>
+                    
+                    <button type="button" class="btn btn-primary control-button w-100" onclick="updateSettingsThresholds()">
+                        <strong>Update Thresholds</strong>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h4>ℹ️ System Information</h4>
+            </div>
+            <div class="card-body">
+                <table class="table table-dark table-borderless">
+                    <tr>
+                        <td style="color: #00ff00;"><strong>Control Mode:</strong></td>
+                        <td style="color: #ffffff;">{{ system_state.control_mode|title }}</td>
+                    </tr>
+                    <tr>
+                        <td style="color: #00ff00;"><strong>Current DHW Low:</strong></td>
+                        <td style="color: #ffffff;">{{ system_state.dhw_temp_low }}°C</td>
+                    </tr>
+                    <tr>
+                        <td style="color: #00ff00;"><strong>Current DHW High:</strong></td>
+                        <td style="color: #ffffff;">{{ system_state.dhw_temp_high }}°C</td>
+                    </tr>
+                    <tr>
+                        <td style="color: #00ff00;"><strong>Last Update:</strong></td>
+                        <td style="color: #ffffff;">{{ system_state.last_update|date:"Y-m-d H:i:s" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4>🎛️ System Actions</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-warning control-button w-100" onclick="syncRelays()">
+                            <strong>Sync Relay States</strong>
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-info control-button w-100" onclick="location.reload()">
+                            <strong>Refresh Page</strong>
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{% url 'core:logs' %}" class="btn btn-secondary control-button w-100">
+                            <strong>View System Logs</strong>
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{% url 'core:dashboard' %}" class="btn btn-primary control-button w-100">
+                            <strong>Back to Dashboard</strong>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4>🗄️ Data Management</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5 style="color: #00ff00;">Mini-Graph Data</h5>
+                        <p style="color: #cccccc;">Mini-graphs store temperature history data in your browser's localStorage to persist across page refreshes and browser restarts.</p>
+                        <ul style="color: #cccccc;">
+                            <li>Data is automatically saved every 30 seconds</li>
+                            <li>Data persists for up to 1 hour</li>
+                            <li>Includes temperature readings and zoom levels</li>
+                            <li>Stored locally in your browser</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5 style="color: #ff6b6b;">Clear Data</h5>
+                        <p style="color: #cccccc;">Click the button below to clear all mini-graph data from localStorage. This will reset all graphs to empty state.</p>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-danger control-button" onclick="clearMiniGraphData()">
+                                <strong>🗑️ Clear Mini-Graph Data</strong>
+                            </button>
+                            <small class="text-muted">This action cannot be undone!</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4>🔧 System Configuration</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5 style="color: #00ff00;">Temperature Control</h5>
+                        <ul style="color: #cccccc;">
+                            <li>DHW sensor monitors upper tank temperature</li>
+                            <li>Furnace automatically controlled based on thresholds</li>
+                            <li>30-second cooldown period between furnace switches</li>
+                            <li>Manual override available in manual mode</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5 style="color: #00ff00;">Safety Features</h5>
+                        <ul style="color: #cccccc;">
+                            <li>Temperature validation (0-100°C range)</li>
+                            <li>Jump detection (max 20°C per reading)</li>
+                            <li>API connectivity monitoring</li>
+                            <li>Relay state synchronization</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateSettingsThresholds() {
+    const dhwLow = document.getElementById('dhw-low-setting').value;
+    const dhwHigh = document.getElementById('dhw-high-setting').value;
+    
+    sendControl('update_thresholds', {
+        'dhw_low': dhwLow,
+        'dhw_high': dhwHigh
+    });
+}
+
+function clearMiniGraphData() {
+    if (confirm('Are you sure you want to clear all mini-graph data? This action cannot be undone and will reset all graphs to empty state.')) {
+        try {
+            // Clear localStorage data
+            localStorage.removeItem('bandaskapp_mini_graph_data');
+            localStorage.removeItem('bandaskapp_mini_graph_timestamp');
+            
+            // Show success message
+            alert('Mini-graph data has been cleared successfully! All graphs will be reset to empty state when you return to the dashboard.');
+            
+            console.log('Mini-graph localStorage data cleared by user');
+        } catch (error) {
+            console.error('Error clearing mini-graph data:', error);
+            alert('Error clearing data: ' + error.message);
+        }
+    }
+}
+</script>
+{% endblock %}
+
+
