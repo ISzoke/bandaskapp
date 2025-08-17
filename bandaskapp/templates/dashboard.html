@@ -2,129 +2,158 @@
 
 {% block content %}
 <div class="row h-100">
-    <!-- Left Side - Heat Tank Visualization (2/3 width) -->
-    <div class="col-lg-8 col-md-12 h-100">
+    <!-- Left Side - Heat Tank Visualization (50% width) -->
+    <div class="col-6 h-100">
         <div class="heat-tank">
             
+            <!-- Check if any sensors are enabled -->
+            {% if not dhw_sensor_1_enabled and not dhw_sensor_2_enabled and not dhw_sensor_3_enabled %}
+            <div class="temperature-field" style="text-align: center; padding: 40px;">
+                <h4 style="color: #ff4444;">No Temperature Sensors Enabled</h4>
+                <p style="color: #cccccc;">All temperature sensors are currently disabled in the configuration.</p>
+                <p style="color: #cccccc;">Check settings.py to enable sensors or contact administrator.</p>
+            </div>
+            {% else %}
+            
             <!-- Top Temperature Field - DHW 1 -->
+            {% if dhw_sensor_1_enabled %}
             <div class="temperature-field top">
                 <div class="row">
-                    <div class="col-3">
-                        <h5 style="color: #ff6b6b;">DHW Top</h5>
+                    <div class="col-4">
+                        <h5 style="color: #ff6b6b; font-size: 1rem; margin-bottom: 5px;">DHW Top</h5>
                         <div class="temperature-display">
                             <span id="temp-dhw-1">{{ dhw_temp|floatformat:1 }}</span>°C
                         </div>
-                        <small class="text-muted">Sensor: <span id="sensor-status-dhw-1" class="{% if dhw_sensor_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_online %}Online{% else %}Offline{% endif %}</span></small>
+                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span id="sensor-status-dhw-1" class="{% if dhw_sensor_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_online %}Online{% else %}Offline{% endif %}</span></small>
                     </div>
-                    <div class="col-9 text-end">
+                    <div class="col-8 text-end">
                         <div class="mini-graph" id="mini-graph-dhw-1">
-                            <canvas width="100%" height="100%"></canvas>
+                            <div class="mini-graph-container">
+                                <canvas width="100%" height="100%"></canvas>
+                                <div class="time-label" id="time-label-dhw-1"></div>
+                            </div>
                         </div>
-                        <div class="time-label" id="time-label-dhw-1"></div>
                     </div>
                 </div>
             </div>
+            {% endif %}
             
             <!-- Heating Water Fields -->
+            {% if dhw_sensor_2_enabled %}
             <div class="temperature-field heating">
                 <div class="row">
-                    <div class="col-3">
-                        <h5 style="color: #ffa500;">DHW Middle</h5>
+                    <div class="col-4">
+                        <h5 style="color: #ffa500; font-size: 1rem; margin-bottom: 5px;">DHW Middle</h5>
                         <div class="temperature-display">
                             <span id="temp-heating-1">{{ dhw_temp_2|floatformat:1 }}</span>°C
                         </div>
-                        <small class="text-muted">Sensor: <span id="sensor-status-heating-1" class="{% if dhw_sensor_2_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_2_online %}Online{% else %}Offline{% endif %}</span></small>
+                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span id="sensor-status-heating-1" class="{% if dhw_sensor_2_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_2_online %}Online{% else %}Offline{% endif %}</span></small>
                     </div>
-                    <div class="col-9 text-end">
+                    <div class="col-8 text-end">
                         <div class="mini-graph" id="mini-graph-heating-1">
-                            <canvas width="100%" height="100%"></canvas>
+                            <div class="mini-graph-container">
+                                <canvas width="100%" height="100%"></canvas>
+                                <div class="time-label" id="time-label-heating-1"></div>
+                            </div>
                         </div>
-                        <div class="time-label" id="time-label-heating-1"></div>
                     </div>
                 </div>
             </div>
+            {% endif %}
             
+            {% if dhw_sensor_3_enabled %}
             <div class="temperature-field heating">
                 <div class="row">
-                    <div class="col-3">
-                        <h5 style="color: #ffa500;">DHW Bottom</h5>
+                    <div class="col-4">
+                        <h5 style="color: #ffa500; font-size: 1rem; margin-bottom: 5px;">DHW Bottom</h5>
                         <div class="temperature-display">
                             <span id="temp-heating-2">{{ dhw_temp_3|floatformat:1 }}</span>°C
                         </div>
-                        <small class="text-muted">Sensor: <span id="sensor-status-heating-2" class="{% if dhw_sensor_3_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_3_online %}Online{% else %}Offline{% endif %}</span></small>
+                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span id="sensor-status-heating-2" class="{% if dhw_sensor_3_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_3_online %}Online{% else %}Offline{% endif %}</span></small>
                     </div>
-                    <div class="col-9 text-end">
+                    <div class="col-8 text-end">
                         <div class="mini-graph" id="mini-graph-heating-2">
-                            <canvas width="100%" height="100%"></canvas>
+                            <div class="mini-graph-container">
+                                <canvas width="100%" height="100%"></canvas>
+                                <div class="time-label" id="time-label-heating-2"></div>
+                            </div>
                         </div>
-                        <div class="time-label" id="time-label-heating-2"></div>
                     </div>
                 </div>
             </div>
+            {% endif %}
             
-            <!-- Bottom Temperature Fields -->
+            <!-- Bottom Temperature Fields - Only show if DHW 1 is enabled -->
+            {% if dhw_sensor_1_enabled %}
             <div class="temperature-field bottom">
                 <div class="row">
-                    <div class="col-3">
-                        <h5 style="color: #4ecdc4;">Bottom 1</h5>
+                    <div class="col-4">
+                        <h5 style="color: #4ecdc4; font-size: 1rem; margin-bottom: 5px;">Bottom 1</h5>
                         <div class="temperature-display">
                             <span id="temp-bottom-1">{{ dhw_temp|floatformat:1|add:"-15" }}</span>°C
                         </div>
-                        <small class="text-muted">Sensor: <span class="status-on">Online</span></small>
+                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span class="status-on">Online</span></small>
                     </div>
-                    <div class="col-9 text-end">
+                    <div class="col-8 text-end">
                         <div class="mini-graph" id="mini-graph-bottom-1">
-                            <canvas width="100%" height="100%"></canvas>
+                            <div class="mini-graph-container">
+                                <canvas width="100%" height="100%"></canvas>
+                                <div class="time-label" id="time-label-bottom-1"></div>
+                            </div>
                         </div>
-                        <div class="time-label" id="time-label-bottom-1"></div>
                     </div>
                 </div>
             </div>
             
             <div class="temperature-field bottom">
                 <div class="row">
-                    <div class="col-3">
-                        <h5 style="color: #4ecdc4;">Bottom 2</h5>
+                    <div class="col-4">
+                        <h5 style="color: #4ecdc4; font-size: 1rem; margin-bottom: 5px;">Bottom 2</h5>
                         <div class="temperature-display">
                             <span id="temp-bottom-2">{{ dhw_temp|floatformat:1|add:"-20" }}</span>°C
                         </div>
-                        <small class="text-muted">Sensor: <span class="status-on">Online</span></small>
+                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span class="text-muted">Online</span></small>
                     </div>
-                    <div class="col-9 text-end">
+                    <div class="col-8 text-end">
                         <div class="mini-graph" id="mini-graph-bottom-2">
-                            <canvas width="100%" height="100%"></canvas>
+                            <div class="mini-graph-container">
+                                <canvas width="100%" height="100%"></canvas>
+                                <div class="time-label" id="time-label-bottom-2"></div>
+                            </div>
                         </div>
-                        <div class="time-label" id="time-label-bottom-2"></div>
                     </div>
                 </div>
             </div>
+            {% endif %}
+            
+            {% endif %}
         </div>
     </div>
     
     <!-- Right Side - Control Panel -->
-    <div class="col-lg-4 col-md-12">
+    <div class="col-6">
         <div class="control-panel">
             <!-- Control Buttons -->
-            <div class="row mb-3">
-                <div class="col-6 mb-2">
+            <div class="row mb-2">
+                <div class="col-6 mb-1">
                     <button class="btn {% if control_mode == 'automatic' %}btn-success{% else %}btn-danger{% endif %} control-button w-100" onclick="toggleMode()">
-                        <strong id="mode-toggle-text">Mode {{ control_mode|upper }}</strong>
+                        <strong id="mode-toggle-text" style="font-size: 0.9rem;">Mode {{ control_mode|upper }}</strong>
                     </button>
                 </div>
-                <div class="col-6 mb-2">
+                <div class="col-6 mb-1">
                     <button id="furnace-toggle-btn" class="btn {% if furnace_running %}btn-success{% else %}btn-danger{% endif %} control-button w-100" onclick="toggleFurnace()">
-                        <strong id="furnace-toggle-text">Furnace {% if furnace_running %}ON{% else %}OFF{% endif %}</strong>
+                        <strong id="furnace-toggle-text" style="font-size: 0.9rem;">Furnace {% if furnace_running %}ON{% else %}OFF{% endif %}</strong>
                         <div class="timer-display" id="furnace-timer">00:00</div>
                     </button>
                 </div>
-                <div class="col-6 mb-2">
+                <div class="col-6 mb-1">
                     <button class="btn btn-warning control-button w-100" onclick="syncRelays()">
-                        <strong>Sync Relays</strong>
+                        <strong style="font-size: 0.9rem;">Sync Relays</strong>
                     </button>
                 </div>
-                <div class="col-6 mb-2">
+                <div class="col-6 mb-1">
                     <button id="pump-toggle-btn" class="btn btn-danger control-button w-100" onclick="togglePump()">
-                        <strong id="pump-toggle-text">Pump OFF</strong>
+                        <strong id="pump-toggle-text" style="font-size: 0.9rem;">Pump OFF</strong>
                         <div class="timer-display" id="pump-timer">00:00</div>
                     </button>
                 </div>
@@ -133,51 +162,51 @@
             <!-- Temperature Thresholds -->
             <hr style="border-color: #444444;">
             <div class="row temperature-thresholds">
-                <div class="col-12 mb-2">
-                    <h6 style="color: #00ff00;">Temperature Thresholds</h6>
+                <div class="col-12 mb-1">
+                    <h6 style="color: #00ff00; font-size: 0.9rem;">Temperature Thresholds</h6>
                 </div>
                 <div class="d-flex align-items-start">
                     <!-- Left side: Input controls -->
                     <div class="flex-grow-1">
                         <div class="row">
-                            <div class="col-6 mb-2">
-                                <label for="dhw-low" class="form-label">DHW Low (°C):</label>
+                            <div class="col-6 mb-1">
+                                <label for="dhw-low" class="form-label" style="font-size: 0.8rem;">DHW Low (°C):</label>
                                 <div class="d-flex align-items-center">
-                                    <button class="btn btn-outline-warning btn-sm me-1" onclick="adjustThreshold('dhw-low', -1)" style="min-width: 50px; height: 40px; font-size: 1.2rem;">-1</button>
-                                    <input type="number" class="form-control" id="dhw-low" value="{{ dhw_temp_low|floatformat:1 }}" min="20" max="70" step="0.5" style="text-align: center;">
-                                    <button class="btn btn-outline-warning btn-sm ms-1" onclick="adjustThreshold('dhw-low', 1)" style="min-width: 50px; height: 40px; font-size: 1.2rem;">+1</button>
+                                    <button class="btn btn-outline-warning btn-sm me-1" onclick="adjustThreshold('dhw-low', -1)" style="min-width: 40px; height: 35px; font-size: 1rem;">-1</button>
+                                    <input type="number" class="form-control" id="dhw-low" value="{{ dhw_temp_low|floatformat:1 }}" min="20" max="70" step="0.5" style="text-align: center; font-size: 0.9rem; padding: 4px;">
+                                    <button class="btn btn-outline-warning btn-sm ms-1" onclick="adjustThreshold('dhw-low', 1)" style="min-width: 40px; height: 35px; font-size: 1rem;">+1</button>
                                 </div>
                             </div>
-                            <div class="col-6 mb-2">
-                                <label for="dhw-high" class="form-label">DHW High (°C):</label>
+                            <div class="col-6 mb-1">
+                                <label for="dhw-high" class="form-label" style="font-size: 0.8rem;">DHW High (°C):</label>
                                 <div class="d-flex align-items-center">
-                                    <button class="btn btn-outline-warning btn-sm me-1" onclick="adjustThreshold('dhw-high', -1)" style="min-width: 50px; height: 40px; font-size: 1.2rem;">-1</button>
-                                    <input type="number" class="form-control" id="dhw-high" value="{{ dhw_temp_high|floatformat:1 }}" min="30" max="80" step="0.5" style="text-align: center;">
-                                    <button class="btn btn-outline-warning btn-sm ms-1" onclick="adjustThreshold('dhw-high', 1)" style="min-width: 50px; height: 40px; font-size:1.2rem;">+1</button>
+                                    <button class="btn btn-outline-warning btn-sm me-1" onclick="adjustThreshold('dhw-high', -1)" style="min-width: 40px; height: 35px; font-size: 1rem;">-1</button>
+                                    <input type="number" class="form-control" id="dhw-high" value="{{ dhw_temp_high|floatformat:1 }}" min="30" max="80" step="0.5" style="text-align: center; font-size: 0.9rem; padding: 4px;">
+                                    <button class="btn btn-outline-warning btn-sm ms-1" onclick="adjustThreshold('dhw-high', 1)" style="min-width: 40px; height: 35px; font-size: 1rem;">+1</button>
                                 </div>
                             </div>
-                            <div class="col-6 mb-2">
-                                <label for="hhw-low" class="form-label">HHW Low (°C):</label>
+                            <div class="col-6 mb-1">
+                                <label for="hhw-low" class="form-label" style="font-size: 0.8rem;">HHW Low (°C):</label>
                                 <div class="d-flex align-items-center">
-                                    <button class="btn btn-outline-warning btn-sm me-1" onclick="adjustThreshold('hhw-low', -1)" style="min-width: 50px; height: 40px; font-size: 1.2rem;">-1</button>
-                                    <input type="number" class="form-control" id="hhw-low" value="45.0" min="20" max="70" step="0.5" style="text-align: center;">
-                                    <button class="btn btn-outline-warning btn-sm ms-1" onclick="adjustThreshold('hhw-low', 1)" style="min-width: 50px; height: 40px; font-size: 1.2rem;">+1</button>
+                                    <button class="btn btn-outline-warning btn-sm me-1" onclick="adjustThreshold('hhw-low', -1)" style="min-width: 40px; height: 35px; font-size: 1rem;">-1</button>
+                                    <input type="number" class="form-control" id="hhw-low" value="45.0" min="20" max="70" step="0.5" style="text-align: center; font-size: 0.9rem; padding: 4px;">
+                                    <button class="btn btn-outline-warning btn-sm ms-1" onclick="adjustThreshold('hhw-low', 1)" style="min-width: 40px; height: 35px; font-size: 1rem;">+1</button>
                                 </div>
                             </div>
-                            <div class="col-6 mb-2">
-                                <label for="hhw-high" class="form-label">HHW High (°C):</label>
+                            <div class="col-6 mb-1">
+                                <label for="hhw-high" class="form-label" style="font-size: 0.8rem;">HHW High (°C):</label>
                                 <div class="d-flex align-items-center">
-                                    <button class="btn btn-outline-warning btn-sm me-1" onclick="adjustThreshold('hhw-high', -1)" style="min-width: 50px; height: 40px; font-size: 1.2rem;">-1</button>
-                                    <input type="number" class="form-control" id="hhw-high" value="65.0" min="30" max="80" step="0.5" style="text-align: center;">
-                                    <button class="btn btn-outline-warning btn-sm ms-1" onclick="adjustThreshold('hhw-high', 1)" style="min-width: 50px; height: 40px; font-size:1.2rem;">+1</button>
+                                    <button class="btn btn-outline-warning btn-sm me-1" onclick="adjustThreshold('hhw-high', -1)" style="min-width: 40px; height: 35px; font-size: 1rem;">-1</button>
+                                    <input type="number" class="form-control" id="hhw-high" value="65.0" min="30" max="80" step="0.5" style="text-align: center; font-size: 0.9rem; padding: 4px;">
+                                    <button class="btn btn-outline-warning btn-sm ms-1" onclick="adjustThreshold('hhw-high', 1)" style="min-width: 40px; height: 35px; font-size: 1rem;">+1</button>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
                     <!-- Right side: Update button -->
-                    <div class="ms-3 d-flex align-items-center">
-                        <button class="btn btn-info btn_update_thresholds" onclick="updateThresholds()">
+                    <div class="ms-2 d-flex align-items-center">
+                        <button class="btn btn-info btn_update_thresholds" onclick="updateThresholds()" style="height: 120px; width: 40px; font-size: 0.9rem;">
                             <span>Update</span>
                         </button>
                     </div>
@@ -337,26 +366,26 @@
 
         // Make canvas responsive to fit its container
         function resizeCanvas() {
-            const col9Element = canvasContainer.closest('.col-9');
-            if (col9Element) {
-                const colWidth = col9Element.offsetWidth;
+            const col8Element = canvasContainer.closest('.col-8');
+            if (col8Element) {
+                const colWidth = col8Element.offsetWidth;
                 const temperatureField = canvasContainer.closest('.temperature-field');
-                const col3Element = temperatureField.querySelector('.col-3');
+                const col4Element = temperatureField.querySelector('.col-4');
                 
-                if (col3Element) {
-                    // Simple height calculation: h5 + temperature-display + text-muted
-                    const h5Height = col3Element.querySelector('h5').offsetHeight;
-                    const tempDisplayHeight = col3Element.querySelector('.temperature-display').offsetHeight;
-                    const smallHeight = col3Element.querySelector('small').offsetHeight;
+                if (col4Element) {
+                    // Calculate height to match col-4 content: h5 + temperature-display + text-muted
+                    const h5Height = col4Element.querySelector('h5').offsetHeight;
+                    const tempDisplayHeight = col4Element.querySelector('.temperature-display').offsetHeight;
+                    const smallHeight = col4Element.querySelector('small').offsetHeight;
                     
-                    // Sum of the three heights with some reduction for compactness
-                    const contentHeight = h5Height + tempDisplayHeight + smallHeight - 2; // Reduced from -8 to -2 for larger height
+                    // Total height should match the col-4 content exactly
+                    const contentHeight = h5Height + tempDisplayHeight + smallHeight;
                     
-                    // Set canvas size to match the col-9 width and the content height
-                    canvas.width = colWidth - 8; // Subtract padding from col-9
-                    canvas.height = contentHeight; // Larger height for better fit
+                    // Set canvas size to match the col-8 width and the content height
+                    canvas.width = colWidth - 8; // Subtract padding from col-8
+                    canvas.height = contentHeight; // Match col-4 height exactly
                     
-                    console.log(`Canvas resized to ${canvas.width}x${canvas.height} for ${canvasId} (col-9 width: ${colWidth}, h5: ${h5Height}, temp: ${tempDisplayHeight}, small: ${smallHeight}, total: ${contentHeight})`);
+                    console.log(`Canvas resized to ${canvas.width}x${canvas.height} for ${canvasId} (col-8 width: ${colWidth}, h5: ${h5Height}, temp: ${tempDisplayHeight}, small: ${smallHeight}, total: ${contentHeight})`);
                     
                     // Immediately redraw the graph with existing data after resize
                     if (data.length > 0) {
@@ -637,14 +666,25 @@
             console.log('No existing mini-graph data found in localStorage, starting fresh.');
         }
         
-        // Check if canvas elements exist
-        const canvasElements = {
-            'dhw-1': document.getElementById('mini-graph-dhw-1'),
-            'heating-1': document.getElementById('mini-graph-heating-1'),
-            'heating-2': document.getElementById('mini-graph-heating-2'),
-            'bottom-1': document.getElementById('mini-graph-bottom-1'),
-            'bottom-2': document.getElementById('mini-graph-bottom-2')
-        };
+        // Check if canvas elements exist and create a dynamic list based on enabled sensors
+        const canvasElements = {};
+        
+        // Only add sensors that are enabled and have canvas elements
+        if (document.getElementById('mini-graph-dhw-1')) {
+            canvasElements['dhw-1'] = document.getElementById('mini-graph-dhw-1');
+        }
+        if (document.getElementById('mini-graph-heating-1')) {
+            canvasElements['heating-1'] = document.getElementById('mini-graph-heating-1');
+        }
+        if (document.getElementById('mini-graph-heating-2')) {
+            canvasElements['heating-2'] = document.getElementById('mini-graph-heating-2');
+        }
+        if (document.getElementById('mini-graph-bottom-1')) {
+            canvasElements['bottom-1'] = document.getElementById('mini-graph-bottom-1');
+        }
+        if (document.getElementById('mini-graph-bottom-2')) {
+            canvasElements['bottom-2'] = document.getElementById('mini-graph-bottom-2');
+        }
         
         console.log('Canvas elements found:', canvasElements); // Debug log
         
@@ -741,6 +781,16 @@
             });
         }, 100);
         
+        // Additional resize after a longer delay to ensure all elements are properly rendered
+        setTimeout(() => {
+            console.log('Second mini-graph resize to ensure proper heights...');
+            Object.keys(miniGraphData).forEach(key => {
+                if (miniGraphData[key] && miniGraphData[key].resizeCanvas) {
+                    miniGraphData[key].resizeCanvas();
+                }
+            });
+        }, 500);
+        
         // Global resize handler for all mini-graphs
         window.addEventListener('resize', () => {
             console.log('Window resized, updating all mini-graphs...');
@@ -782,77 +832,104 @@
         console.log('Mini graphs initialized with data persistence');
     });
     
-    // Fallback initialization - try again when page is fully loaded
-    window.addEventListener('load', function() {
-        console.log('Window load event fired'); // Debug log
-        if (Object.keys(miniGraphData).length === 0) {
-            console.log('Mini graphs not initialized, trying again...'); // Debug log
-            // Force re-initialization only if no graphs exist
-            const canvasElements = {
-                'dhw-1': document.getElementById('mini-graph-dhw-1'),
-                'heating-1': document.getElementById('mini-graph-heating-1'),
-                'heating-2': document.getElementById('mini-graph-heating-2'),
-                'bottom-1': document.getElementById('mini-graph-bottom-1'),
-                'bottom-2': document.getElementById('mini-graph-bottom-2')
-            };
-            
-            Object.keys(canvasElements).forEach(key => {
-                if (canvasElements[key] && !miniGraphData[key]) {
-                    console.log(`Creating mini graph for ${key} (fallback)`); // Debug log
-                    if (key === 'dhw-1') {
-                        miniGraphData[key] = createMiniGraph('mini-graph-' + key, '#ff6b6b', 0);
-                    } else if (key.startsWith('heating')) {
-                        const offset = key === 'heating-1' ? -5 : -10;
-                        miniGraphData[key] = createMiniGraph('mini-graph-' + key, '#ffa500', offset);
-                    } else if (key.startsWith('bottom')) {
-                        const offset = key === 'bottom-1' ? -15 : -20;
-                        miniGraphData[key] = createMiniGraph('mini-graph-' + key, '#4ecdc4', offset);
+            // Fallback initialization - try again when page is fully loaded
+        window.addEventListener('load', function() {
+            console.log('Window load event fired'); // Debug log
+            if (Object.keys(miniGraphData).length === 0) {
+                console.log('Mini graphs not initialized, trying again...'); // Debug log
+                // Force re-initialization only if no graphs exist
+                const canvasElements = {};
+                
+                // Only add sensors that are enabled and have canvas elements
+                if (document.getElementById('mini-graph-dhw-1')) {
+                    canvasElements['dhw-1'] = document.getElementById('mini-graph-dhw-1');
+                }
+                if (document.getElementById('mini-graph-heating-1')) {
+                    canvasElements['heating-1'] = document.getElementById('mini-graph-heating-1');
+                }
+                if (document.getElementById('mini-graph-heating-2')) {
+                    canvasElements['heating-2'] = document.getElementById('mini-graph-heating-2');
+                }
+                if (document.getElementById('mini-graph-bottom-1')) {
+                    canvasElements['bottom-1'] = document.getElementById('mini-graph-bottom-1');
+                }
+                if (document.getElementById('mini-graph-bottom-2')) {
+                    canvasElements['bottom-2'] = document.getElementById('mini-graph-bottom-2');
+                }
+                
+                Object.keys(canvasElements).forEach(key => {
+                    if (canvasElements[key] && !miniGraphData[key]) {
+                        console.log(`Creating mini graph for ${key} (fallback)`); // Debug log
+                        if (key === 'dhw-1') {
+                            miniGraphData[key] = createMiniGraph('mini-graph-' + key, '#ff6b6b', 0);
+                        } else if (key.startsWith('heating')) {
+                            const offset = key === 'heating-1' ? -5 : -10;
+                            miniGraphData[key] = createMiniGraph('mini-graph-' + key, '#ffa500', offset);
+                        } else if (key.startsWith('bottom')) {
+                            const offset = key === 'bottom-1' ? -15 : -20;
+                            miniGraphData[key] = createMiniGraph('mini-graph-' + key, '#4ecdc4', offset);
+                        }
                     }
+                });
+                
+                if (Object.keys(miniGraphData).length > 0) {
+                    console.log('Fallback initialization successful');
                 }
-            });
-            
-            if (Object.keys(miniGraphData).length > 0) {
-                console.log('Fallback initialization successful');
+            } else {
+                console.log('Mini graphs already exist, preserving data across tab switch');
+                // Redraw existing graphs with their data
+                Object.keys(miniGraphData).forEach(key => {
+                    if (miniGraphData[key] && miniGraphData[key].drawGraph) {
+                        miniGraphData[key].drawGraph();
+                    }
+                });
             }
-        } else {
-            console.log('Mini graphs already exist, preserving data across tab switch');
-            // Redraw existing graphs with their data
-            Object.keys(miniGraphData).forEach(key => {
-                if (miniGraphData[key] && miniGraphData[key].drawGraph) {
-                    miniGraphData[key].drawGraph();
-                }
-            });
-        }
-    });
+        });
     
     // Function to update mini graphs with real data
     function updateMiniGraphs() {
-        // Get current temperatures from all sensors
-        const dhwTemp = parseFloat(document.getElementById('temp-dhw-1').textContent);
-        const dhwTemp2 = parseFloat(document.getElementById('temp-heating-1').textContent);
-        const dhwTemp3 = parseFloat(document.getElementById('temp-heating-2').textContent);
+        // Get current temperatures from enabled sensors only
+        let dhwTemp = null;
+        let dhwTemp2 = null;
+        let dhwTemp3 = null;
+        
+        // Only try to get temperatures from elements that exist (enabled sensors)
+        const dhwTempElement = document.getElementById('temp-dhw-1');
+        if (dhwTempElement) {
+            dhwTemp = parseFloat(dhwTempElement.textContent);
+        }
+        
+        const dhwTemp2Element = document.getElementById('temp-heating-1');
+        if (dhwTemp2Element) {
+            dhwTemp2 = parseFloat(dhwTemp2Element.textContent);
+        }
+        
+        const dhwTemp3Element = document.getElementById('temp-heating-2');
+        if (dhwTemp3Element) {
+            dhwTemp3 = parseFloat(dhwTemp3Element.textContent);
+        }
         
         console.log('updateMiniGraphs called, DHW temps:', dhwTemp, dhwTemp2, dhwTemp3); // Debug log
         
-        // Update DHW Top mini graph
+        // Update DHW Top mini graph - only if sensor is enabled
         if (!isNaN(dhwTemp) && miniGraphData['dhw-1']) {
             console.log('Updating dhw-1 mini graph with:', dhwTemp); // Debug log
             miniGraphData['dhw-1'].updateData(dhwTemp);
         }
         
-        // Update DHW Middle mini graph
+        // Update DHW Middle mini graph - only if sensor is enabled
         if (!isNaN(dhwTemp2) && miniGraphData['heating-1']) {
             console.log('Updating heating-1 mini graph with:', dhwTemp2); // Debug log
             miniGraphData['heating-1'].updateData(dhwTemp2);
         }
         
-        // Update DHW Bottom mini graph
+        // Update DHW Bottom mini graph - only if sensor is enabled
         if (!isNaN(dhwTemp3) && miniGraphData['heating-2']) {
             console.log('Updating heating-2 mini graph with:', dhwTemp3); // Debug log
             miniGraphData['heating-2'].updateData(dhwTemp3);
         }
         
-        // Update bottom graphs (still using calculated values for now)
+        // Update bottom graphs (still using calculated values for now) - only if DHW 1 is enabled
         if (!isNaN(dhwTemp)) {
             if (miniGraphData['bottom-1']) {
                 console.log('Updating bottom-1 mini graph with:', dhwTemp - 15); // Debug log
@@ -888,12 +965,17 @@
     window.testMiniGraphData = function() {
         console.log('Testing mini graph data flow...');
         
-        // Get current DHW temperature
-        const dhwTemp = parseFloat(document.getElementById('temp-dhw-1').textContent);
+        // Get current DHW temperature from enabled sensors
+        let dhwTemp = null;
+        const dhwTempElement = document.getElementById('temp-dhw-1');
+        if (dhwTempElement) {
+            dhwTemp = parseFloat(dhwTempElement.textContent);
+        }
+        
         console.log('Current DHW temp:', dhwTemp);
         
         if (!isNaN(dhwTemp)) {
-            // Manually add data to each mini graph
+            // Manually add data to each mini graph that exists
             Object.keys(miniGraphData).forEach(key => {
                 if (miniGraphData[key]) {
                     console.log(`Adding data to ${key} mini graph`);
@@ -957,13 +1039,24 @@
     window.initializeMiniGraphsManually = function() {
         console.log('Manual initialization of mini graphs...');
         
-        const canvasElements = {
-            'dhw-1': document.getElementById('mini-graph-dhw-1'),
-            'heating-1': document.getElementById('mini-graph-heating-1'),
-            'heating-2': document.getElementById('mini-graph-heating-2'),
-            'bottom-1': document.getElementById('mini-graph-bottom-1'),
-            'bottom-2': document.getElementById('mini-graph-bottom-2')
-        };
+        const canvasElements = {};
+        
+        // Only add sensors that are enabled and have canvas elements
+        if (document.getElementById('mini-graph-dhw-1')) {
+            canvasElements['dhw-1'] = document.getElementById('mini-graph-dhw-1');
+        }
+        if (document.getElementById('mini-graph-heating-1')) {
+            canvasElements['heating-1'] = document.getElementById('mini-graph-heating-1');
+        }
+        if (document.getElementById('mini-graph-heating-2')) {
+            canvasElements['heating-2'] = document.getElementById('mini-graph-heating-2');
+        }
+        if (document.getElementById('mini-graph-bottom-1')) {
+            canvasElements['bottom-1'] = document.getElementById('mini-graph-bottom-1');
+        }
+        if (document.getElementById('mini-graph-bottom-2')) {
+            canvasElements['bottom-2'] = document.getElementById('mini-graph-bottom-2');
+        }
         
         console.log('Canvas elements found:', canvasElements);
         
@@ -1422,6 +1515,7 @@
                 miniGraphData[key].updateData(testTemp);
             }
         });
+        console.log('Test data added to all available mini graphs');
     };
 </script>
 {% endblock %}

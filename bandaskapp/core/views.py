@@ -5,6 +5,7 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.contrib import messages
 from django.utils import timezone
+from django.conf import settings
 from datetime import timedelta
 
 from core.models import TemperatureSensor, Relay, SystemState, SystemLog, TemperatureLog
@@ -22,6 +23,9 @@ def dashboard(request):
         # Get recent system logs
         recent_logs = SystemLog.objects.order_by('-timestamp')[:10]
         
+        # Get configuration to check which sensors are enabled
+        config = settings.BANDASKAPP_CONFIG
+        
         context = {
             'dhw_temp': status.get('dhw_temperature', 0),
             'dhw_temp_2': status.get('dhw_temperature_2', 0),  # DHW middle
@@ -37,6 +41,10 @@ def dashboard(request):
             'last_reading': status.get('last_reading'),
             'recent_logs': recent_logs,
             'error': status.get('error'),
+            # Add sensor enabled status
+            'dhw_sensor_1_enabled': config['THERMOMETER_DHW_1_ID'] != 'NONE',
+            'dhw_sensor_2_enabled': config['THERMOMETER_DHW_2_ID'] != 'NONE',
+            'dhw_sensor_3_enabled': config['THERMOMETER_DHW_3_ID'] != 'NONE',
         }
         
         return render(request, 'dashboard.html', context)
@@ -49,6 +57,9 @@ def dashboard(request):
             'dhw_temp_3': 0,
             'furnace_running': False,
             'control_mode': 'unknown',
+            'dhw_sensor_1_enabled': True,
+            'dhw_sensor_2_enabled': True,
+            'dhw_sensor_3_enabled': True,
         })
 
 def api_status(request):
@@ -56,6 +67,9 @@ def api_status(request):
     try:
         controller = HardwareController()
         status = controller.get_system_status()
+        
+        # Get configuration to check which sensors are enabled
+        config = settings.BANDASKAPP_CONFIG
         
         # Format response
         response_data = {
@@ -72,6 +86,10 @@ def api_status(request):
             'api_connected': status.get('api_connected', False),
             'timestamp': timezone.now().isoformat(),
             'success': True,
+            # Add sensor enabled status
+            'dhw_sensor_1_enabled': config['THERMOMETER_DHW_1_ID'] != 'NONE',
+            'dhw_sensor_2_enabled': config['THERMOMETER_DHW_2_ID'] != 'NONE',
+            'dhw_sensor_3_enabled': config['THERMOMETER_DHW_3_ID'] != 'NONE',
         }
         
         if status.get('last_reading'):
@@ -234,7 +252,7 @@ def logs(request):
             'logs': [],
         })
 
-def settings(request):
+def settings_view(request):
     """Settings view"""
     try:
         system_state = SystemState.load()

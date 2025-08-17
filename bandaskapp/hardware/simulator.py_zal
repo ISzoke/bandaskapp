@@ -47,9 +47,8 @@ HEATING_CONTROL_UNIT_ID = CONFIG['HEATING_CONTROL_UNIT_ID']
 class EVOKSimulator:
     def __init__(self):
         # Temperature sensors - DHW sensor starts below threshold
-        self.sensors = {}
-        if THERMOMETER_DHW_1_ID != "NONE":
-            self.sensors[THERMOMETER_DHW_1_ID] = {  # DHW sensor
+        self.sensors = {
+            THERMOMETER_DHW_1_ID: {  # DHW sensor
                 'dev': 'temp',
                 'circuit': THERMOMETER_DHW_1_ID,
                 'address': '28.95DCD5090000.35',  # Keep address format for compatibility
@@ -57,10 +56,8 @@ class EVOKSimulator:
                 'lost': False,
                 'time': time.time(),
                 'type': 'DS18B20'
-            }
-
-        if THERMOMETER_DHW_2_ID != "NONE":
-            self.sensors[THERMOMETER_DHW_2_ID] = {  # DHW sensor
+            },
+            THERMOMETER_DHW_2_ID: {  # DHW sensor
                 'dev': 'temp',
                 'circuit': THERMOMETER_DHW_2_ID,
                 'address': '28.95DCD5090000.36',  # Keep address format for compatibility
@@ -68,10 +65,8 @@ class EVOKSimulator:
                 'lost': False,
                 'time': time.time(),
                 'type': 'DS18B20'
-            }
-
-        if THERMOMETER_DHW_3_ID != "NONE":
-            self.sensors[THERMOMETER_DHW_3_ID] = {  # DHW sensor
+            },
+            THERMOMETER_DHW_3_ID: {  # DHW sensor
                 'dev': 'temp',
                 'circuit': THERMOMETER_DHW_3_ID,
                 'address': '28.95DCD5090000.37',  # Keep address format for compatibility
@@ -79,10 +74,8 @@ class EVOKSimulator:
                 'lost': False,
                 'time': time.time(),
                 'type': 'DS18B20'
-            }
-
-        if THERMOMETER_HHW_1_ID != "NONE":
-            self.sensors[THERMOMETER_HHW_1_ID] = {  # DHW sensor
+            },
+            THERMOMETER_HHW_1_ID: {  # DHW sensor
                 'dev': 'temp',
                 'circuit': THERMOMETER_HHW_1_ID,
                 'address': '28.95DCD5090000.38',  # Keep address format for compatibility
@@ -90,10 +83,8 @@ class EVOKSimulator:
                 'lost': False,
                 'time': time.time(),
                 'type': 'DS18B20'
-            }
-
-        if THERMOMETER_HHW_2_ID != "NONE":
-            self.sensors[THERMOMETER_HHW_2_ID] = {  # DHW sensor
+            },
+            THERMOMETER_HHW_2_ID: {  # DHW sensor
                 'dev': 'temp',
                 'circuit': THERMOMETER_HHW_2_ID,
                 'address': '28.95DCD5090000.39',  # Keep address format for compatibility
@@ -101,10 +92,8 @@ class EVOKSimulator:
                 'lost': False,
                 'time': time.time(),
                 'type': 'DS18B20'
-            }
-
-        if THERMOMETER_RHHW_1_ID != "NONE":
-            self.sensors[THERMOMETER_RHHW_1_ID] = {  # DHW sensor
+            },
+            THERMOMETER_RHHW_1_ID: {  # DHW sensor
                 'dev': 'temp',
                 'circuit': THERMOMETER_RHHW_1_ID,
                 'address': '28.95DCD5090000.40',  # Keep address format for compatibility
@@ -112,10 +101,8 @@ class EVOKSimulator:
                 'lost': False,
                 'time': time.time(),
                 'type': 'DS18B20'
-            }
-
-        if THERMOMETER_FHHW_1_ID != "NONE":
-            self.sensors[THERMOMETER_FHHW_1_ID] = {  # DHW sensor
+            },
+            THERMOMETER_FHHW_1_ID: {  # DHW sensor
                 'dev': 'temp',
                 'circuit': THERMOMETER_FHHW_1_ID,
                 'address': '28.95DCD5090000.41',  # Keep address format for compatibility
@@ -124,8 +111,8 @@ class EVOKSimulator:
                 'time': time.time(),
                 'type': 'DS18B20'
             }
-
-
+        }
+        
         # Relays - Furnace relay starts OFF
         self.relays = {
             FURNACE_RELAY_ID: {  # Furnace relay
@@ -328,12 +315,10 @@ class EVOKSimulator:
                 old_temp = dhw_sensor['value']
                 dhw_sensor['value'] = round(new_temp, 1)
                 dhw_sensor['time'] = time.time()
-                if THERMOMETER_DHW_2_ID in self.sensors:
-                    self.sensors[THERMOMETER_DHW_2_ID]['value'] = (dhw_sensor['value'] - 10) * 0.8
-                    self.sensors[THERMOMETER_DHW_2_ID]['time'] = dhw_sensor['time']
-                if THERMOMETER_DHW_3_ID in self.sensors:
-                    self.sensors[THERMOMETER_DHW_3_ID]['value'] = (dhw_sensor['value'] - 20) * 0.6
-                    self.sensors[THERMOMETER_DHW_3_ID]['time'] = dhw_sensor['time']
+                self.sensors[THERMOMETER_DHW_2_ID]['value'] = (dhw_sensor['value'] - 10) * 0.8
+                self.sensors[THERMOMETER_DHW_2_ID]['time'] = dhw_sensor['time']
+                self.sensors[THERMOMETER_DHW_3_ID]['value'] = (dhw_sensor['value'] - 20) * 0.6
+                self.sensors[THERMOMETER_DHW_3_ID]['time'] = dhw_sensor['time']
 
                 self.manual_temp_adjustment = 0.0
 
@@ -445,8 +430,6 @@ def status():
         'timestamp': datetime.now().isoformat()
     })
 
-
-# https://unipitechnology.stoplight.io/docs/evok/qwveyanfg1gys-evok
 if __name__ == '__main__':
     print("="*60)
     print("BandaskApp EVOK Simulator - Enhanced Version")
@@ -455,10 +438,6 @@ if __name__ == '__main__':
     print(f"  Temperature Sensor (DHW): http://localhost:8080/json/temp/{THERMOMETER_DHW_1_ID}")
     print(f"  Furnace Relay (GET):      http://localhost:8080/json/ro/{FURNACE_RELAY_ID}")
     print(f"  Furnace Relay (POST):     http://localhost:8080/json/ro/{FURNACE_RELAY_ID}")
-    print(f"  Pump Relay (GET):         http://localhost:8080/json/ro/{PUMP_RELAY_ID}")
-    print(f"  Pump Relay (POST):        http://localhost:8080/json/ro/{PUMP_RELAY_ID}")
-    print(f"  Heating Comtrol (GET):    http://localhost:8080/json/di/{HEATING_CONTROL_UNIT_ID}")
-    print(f"  Heating Comtrol (POST):   http://localhost:8080/json/di/{HEATING_CONTROL_UNIT_ID}")
     print("  Status:                   http://localhost:8080/status")
     print("="*60)
     

@@ -66,6 +66,20 @@
             margin: 10px 0;
             text-align: center;
             transition: all 0.3s ease;
+            display: flex;
+            align-items: stretch;
+        }
+        
+        .temperature-field .row {
+            width: 100%;
+            align-items: stretch;
+        }
+        
+        .temperature-field .col-4,
+        .temperature-field .col-8 {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
         
         .temperature-field:hover {
@@ -204,9 +218,42 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: auto !important; /* Dynamic height to match col-3 */
+            height: auto !important; /* Dynamic height to match col-4 content */
             width: 100% !important;
             box-sizing: border-box;
+            position: relative;
+        }
+        
+        .mini-graph-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            min-height: 0;
+        }
+        
+        .mini-graph canvas {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            display: block;
+            min-height: 0;
+        }
+        
+        /* Ensure the mini-graph takes the full height of its container */
+        .mini-graph {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            min-height: 0;
+        }
+        
+        .time-label {
+            font-size: 10px;
+            color: #666666;
+            text-align: center;
+            margin-top: 2px;
+            flex-shrink: 0;
         }
         
         .mini-graph canvas {
@@ -440,6 +487,53 @@
                 min-height: 300px;
             }
         }
+        
+        /* Specific adjustments for 720px and smaller screens */
+        @media (max-width: 720px) {
+            .temperature-display {
+                font-size: 1.8rem;
+            }
+            .control-button {
+                min-height: 45px;
+                font-size: 0.9rem;
+                padding: 6px 8px;
+            }
+            .heat-tank {
+                padding: 15px;
+                min-height: 250px;
+            }
+            .temperature-field {
+                padding: 10px;
+                margin: 8px 0;
+            }
+            .mini-graph {
+                height: 60px !important;
+            }
+            .btn_update_thresholds {
+                height: 120px;
+                width: 40px;
+                font-size: 1rem;
+            }
+        }
+        
+        /* Ultra-compact layout for very small screens */
+        @media (max-width: 600px) {
+            .col-6 {
+                flex: 0 0 100%;
+                max-width: 100%;
+            }
+            .temperature-display {
+                font-size: 1.6rem;
+            }
+            .control-button {
+                min-height: 40px;
+                font-size: 0.8rem;
+            }
+            .heat-tank {
+                padding: 10px;
+                min-height: 200px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -481,10 +575,63 @@
     <!-- Custom JavaScript -->
     <script>
         // Global storage for mini-graph data to persist across tab switches
-        const miniGraphData = {};
+        let miniGraphData = {};
         
-        // Tab switching functionality
+        // Debug counter for updateStatus calls
+        let updateStatusCallCount = 0;
+        
+        // Functions to persist mini-graph data across page navigations
+        function saveMiniGraphData() {
+            try {
+                const dataToSave = {};
+                for (const [key, graph] of Object.entries(miniGraphData)) {
+                    if (graph && graph.data && graph.data.length > 0) {
+                        dataToSave[key] = {
+                            data: graph.data,
+                            zoomLevel: graph.getZoomLevel ? graph.getZoomLevel() : 0,
+                            lastUpdate: Date.now()
+                        };
+                    }
+                }
+                sessionStorage.setItem('bandaskapp_miniGraphData', JSON.stringify(dataToSave));
+                console.log('Saved mini-graph data to sessionStorage:', Object.keys(dataToSave), 'at', new Date().toLocaleTimeString());
+            } catch (error) {
+                console.error('Error saving mini-graph data:', error);
+            }
+        }
+        
+        function loadMiniGraphData() {
+            try {
+                const savedData = sessionStorage.getItem('bandaskapp_miniGraphData');
+                if (savedData) {
+                    const parsedData = JSON.parse(savedData);
+                    console.log('Loaded mini-graph data from sessionStorage:', Object.keys(parsedData), 'at', new Date().toLocaleTimeString());
+                    
+                    // Store the loaded data for later use when mini-graphs are created
+                    window.loadedMiniGraphData = parsedData;
+                } else {
+                    console.log('No mini-graph data found in sessionStorage');
+                }
+            } catch (error) {
+                console.error('Error loading mini-graph data:', error);
+            }
+        }
+        
+        // Save data periodically and on page unload
+        setInterval(saveMiniGraphData, 10000); // Save every 10 seconds
+        window.addEventListener('beforeunload', saveMiniGraphData);
+        
+        // Load data when page loads
+        document.addEventListener('DOMContentLoaded', loadMiniGraphData);
+        
+        // Tab switching functionality - simple approach that preserves mini-graph data
         function showTab(tabName) {
+            console.log(`Switching to tab: ${tabName} - mini-graphs will continue running in background`);
+            
+            // Save current mini-graph data before navigation
+            saveMiniGraphData();
+            
+            // Use traditional navigation but ensure data is preserved
             if (tabName === 'dashboard') {
                 window.location.href = "{% url 'core:dashboard' %}";
             } else if (tabName === 'logs') {
@@ -494,7 +641,42 @@
             }
         }
         
-        // Set active tab based on current page
+        // Enhanced AJAX polling for mini-graphs - continues updating even when tab is hidden
+        let persistentPollingInterval = null; // Single persistent polling that never stops
+        
+        // Persistent polling function - ALWAYS runs regardless of tab state
+        function startPersistentPolling() {
+            console.log('Starting PERSISTENT polling for mini-graphs (never stops)');
+            
+            // This interval runs continuously, regardless of tab visibility
+            persistentPollingInterval = setInterval(function() {
+                console.log('PERSISTENT polling: calling updateStatus() - tab visible:', document.visibilityState, 'time:', new Date().toLocaleTimeString());
+                updateStatus();
+                
+                // Debug: Log the state of miniGraphData every 30 seconds
+                if (persistentPollingInterval && updateStatusCallCount % 6 === 0) { // Every 30 seconds (6 * 5s)
+                    console.log('DEBUG: miniGraphData state:', {
+                        keys: Object.keys(miniGraphData),
+                        dhw1: miniGraphData['dhw-1'] ? 'exists' : 'missing',
+                        heating1: miniGraphData['heating-1'] ? 'exists' : 'missing',
+                        heating2: miniGraphData['heating-2'] ? 'exists' : 'missing',
+                        bottom1: miniGraphData['bottom-1'] ? 'exists' : 'missing',
+                        bottom2: miniGraphData['bottom-2'] ? 'exists' : 'missing'
+                    });
+                }
+            }, 5000);
+        }
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            console.log('Page unloading - cleaning up intervals');
+            
+            if (persistentPollingInterval) {
+                clearInterval(persistentPollingInterval);
+            }
+        });
+        
+        // Set active tab based on current page and initialize persistent polling
         document.addEventListener('DOMContentLoaded', function() {
             const currentPath = window.location.pathname;
             
@@ -505,70 +687,103 @@
             } else if (currentPath.includes('/settings/') || currentPath === '{% url "core:settings" %}') {
                 document.querySelector('.tab-button[onclick*="settings"]').classList.add('active');
             }
+            
+            // Start PERSISTENT polling that never stops
+            startPersistentPolling();
+            
+            console.log('Mini-graph AJAX polling initialized with PERSISTENT polling');
         });
         
         // Auto-refresh status every 10 seconds
         function updateStatus() {
+            updateStatusCallCount++;
+            console.log(`updateStatus() called #${updateStatusCallCount} - tab visible:`, document.visibilityState, 'time:', new Date().toLocaleTimeString());
+            
             fetch('/api/status/')
                 .then(response => response.json())
                 .then(data => {
                     console.log('Status update received:', data); // Debug log
                     if (data.success) {
-                        // Update temperature displays
-                        const dhwTempElement = document.getElementById('temp-dhw-1');
-                        if (dhwTempElement && data.dhw_temp !== undefined) {
-                            dhwTempElement.textContent = data.dhw_temp.toFixed(1);
+                        // Update temperature displays - only if sensors are enabled
+                        if (data.dhw_sensor_1_enabled) {
+                            const dhwTempElement = document.getElementById('temp-dhw-1');
+                            if (dhwTempElement && data.dhw_temp !== undefined) {
+                                dhwTempElement.textContent = data.dhw_temp.toFixed(1);
+                            }
                         }
                         
-                        // Update DHW Middle temperature display
-                        const dhwTemp2Element = document.getElementById('temp-heating-1');
-                        if (dhwTemp2Element && data.dhw_temp_2 !== undefined) {
-                            dhwTemp2Element.textContent = data.dhw_temp_2.toFixed(1);
+                        // Update DHW Middle temperature display - only if sensor is enabled
+                        if (data.dhw_sensor_2_enabled) {
+                            const dhwTemp2Element = document.getElementById('temp-heating-1');
+                            if (dhwTemp2Element && data.dhw_temp_2 !== undefined) {
+                                dhwTemp2Element.textContent = data.dhw_temp_2.toFixed(1);
+                            }
                         }
                         
-                        // Update DHW Bottom temperature display
-                        const dhwTemp3Element = document.getElementById('temp-heating-2');
-                        if (dhwTemp3Element && data.dhw_temp_3 !== undefined) {
-                            dhwTemp3Element.textContent = data.dhw_temp_3.toFixed(1);
+                        // Update DHW Bottom temperature display - only if sensor is enabled
+                        if (data.dhw_sensor_3_enabled) {
+                            const dhwTemp3Element = document.getElementById('temp-heating-2');
+                            if (dhwTemp3Element && data.dhw_temp_3 !== undefined) {
+                                dhwTemp3Element.textContent = data.dhw_temp_3.toFixed(1);
+                            }
                         }
                         
-                        // Update bottom temperature displays (still using calculated values)
-                        const bottomElements = document.querySelectorAll('[id^="temp-bottom-"]');
-                        bottomElements.forEach(element => {
-                            if (data.dhw_temp !== undefined) {
+                        // Update bottom temperature displays (still using calculated values) - only if DHW 1 is enabled
+                        if (data.dhw_sensor_1_enabled && data.dhw_temp !== undefined) {
+                            const bottomElements = document.querySelectorAll('[id^="temp-bottom-"]');
+                            bottomElements.forEach(element => {
                                 const offset = element.id === 'temp-bottom-1' ? -15 : -20;
                                 element.textContent = (data.dhw_temp + offset).toFixed(1);
-                            }
-                        });
+                            });
+                        }
                         
                         // Update mini graphs if they exist in global storage
-                        if (typeof miniGraphData !== 'undefined') {
-                            console.log('Status update: Updating mini graphs with real sensor data');
+                        if (typeof miniGraphData !== 'undefined' && Object.keys(miniGraphData).length > 0) {
+                            console.log('Status update: Updating mini graphs with real sensor data, miniGraphData keys:', Object.keys(miniGraphData));
                             
-                            // Update DHW Top mini graph
-                            if (miniGraphData['dhw-1'] && data.dhw_temp !== undefined) {
+                            let graphsUpdated = false;
+                            
+                            // Update DHW Top mini graph - only if sensor is enabled
+                            if (data.dhw_sensor_1_enabled && miniGraphData['dhw-1'] && data.dhw_temp !== undefined && miniGraphData['dhw-1'].updateData) {
+                                console.log('Updating DHW-1 mini-graph with:', data.dhw_temp);
                                 miniGraphData['dhw-1'].updateData(data.dhw_temp);
+                                graphsUpdated = true;
                             }
                             
-                            // Update DHW Middle mini graph
-                            if (miniGraphData['heating-1'] && data.dhw_temp_2 !== undefined) {
+                            // Update DHW Middle mini graph - only if sensor is enabled
+                            if (data.dhw_sensor_2_enabled && miniGraphData['heating-1'] && data.dhw_temp_2 !== undefined && miniGraphData['heating-1'].updateData) {
+                                console.log('Updating heating-1 mini-graph with:', data.dhw_temp_2);
                                 miniGraphData['heating-1'].updateData(data.dhw_temp_2);
+                                graphsUpdated = true;
                             }
                             
-                            // Update DHW Bottom mini graph
-                            if (miniGraphData['heating-2'] && data.dhw_temp_3 !== undefined) {
+                            // Update DHW Bottom mini graph - only if sensor is enabled
+                            if (data.dhw_sensor_3_enabled && miniGraphData['heating-2'] && data.dhw_temp_3 !== undefined && miniGraphData['heating-2'].updateData) {
+                                console.log('Updating heating-2 mini-graph with:', data.dhw_temp_3);
                                 miniGraphData['heating-2'].updateData(data.dhw_temp_3);
+                                graphsUpdated = true;
                             }
                             
-                            // Update bottom graphs (still using calculated values)
-                            if (data.dhw_temp !== undefined) {
-                                if (miniGraphData['bottom-1']) {
+                            // Update bottom graphs (still using calculated values) - only if DHW 1 is enabled
+                            if (data.dhw_sensor_1_enabled && data.dhw_temp !== undefined) {
+                                if (miniGraphData['bottom-1'] && miniGraphData['bottom-1'].updateData) {
+                                    console.log('Updating bottom-1 mini-graph with:', data.dhw_temp - 15);
                                     miniGraphData['bottom-1'].updateData(data.dhw_temp - 15);
+                                    graphsUpdated = true;
                                 }
-                                if (miniGraphData['bottom-2']) {
+                                if (miniGraphData['bottom-2'] && miniGraphData['bottom-2'].updateData) {
+                                    console.log('Updating bottom-2 mini-graph with:', data.dhw_temp - 20);
                                     miniGraphData['bottom-2'].updateData(data.dhw_temp - 20);
+                                    graphsUpdated = true;
                                 }
                             }
+                            
+                            // Save updated data to localStorage only if graphs were actually updated
+                            if (graphsUpdated) {
+                                saveMiniGraphData();
+                            }
+                        } else {
+                            console.log('miniGraphData is undefined, empty, or mini-graphs not ready yet');
                         }
                         
                         // Update furnace status
@@ -660,8 +875,8 @@
                 });
         }
         
-        // Start auto-refresh
-        setInterval(updateStatus, 5000);
+        // Start auto-refresh - now handled by enhanced polling system
+        // setInterval(updateStatus, 5000); // Replaced with enhanced polling
         
         // Mini graphs are updated by updateStatus function, no need for separate interval
         
@@ -744,4 +959,5 @@
     {% endblock %}
 </body>
 </html>
+
 

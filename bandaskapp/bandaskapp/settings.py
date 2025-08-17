@@ -127,8 +127,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # BandaskApp Configuration
 BANDASKAPP_CONFIG = {
     'THERMOMETER_DHW_1_ID': '2895DCD509000035',  # DHW temperature sensor circuit ID
-    'THERMOMETER_DHW_2_ID': '2895DCD509000036',  # DHW temperature sensor circuit ID
-    'THERMOMETER_DHW_3_ID': '2895DCD509000037',  # DHW temperature sensor circuit ID
+    'THERMOMETER_DHW_2_ID': 'NONE', #'2895DCD509000036',  # DHW temperature sensor circuit ID
+    'THERMOMETER_DHW_3_ID': 'NONE', #'2895DCD509000037',  # DHW temperature sensor circuit ID
     'THERMOMETER_HHW_1_ID': '2895DCD509000038',  # HHW temperature sensor circuit ID
     'THERMOMETER_HHW_2_ID': '2895DCD509000039',  # HHW temperature sensor circuit ID
     'THERMOMETER_RHHW_1_ID': '2895DCD509000040',  # RHHW temperature sensor circuit ID

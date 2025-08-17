@@ -114,25 +114,34 @@ class Command(BaseCommand):
             logger.warning("EVOK API connectivity issues detected")
             return
         
-        # Update temperature readings from all sensors
+        # Update temperature readings from enabled sensors only
         temp1 = self.controller.update_temperature()
         if temp1 is not None:
             logger.info(f"DHW Top temperature: {temp1:.1f}°C")
+        else:
+            logger.debug("DHW Top temperature sensor is disabled or unavailable")
         
         temp2 = self.controller.update_temperature_2()
         if temp2 is not None:
             logger.info(f"DHW Middle temperature: {temp2:.1f}°C")
+        else:
+            logger.debug("DHW Middle temperature sensor is disabled or unavailable")
         
         temp3 = self.controller.update_temperature_3()
         if temp3 is not None:
             logger.info(f"DHW Bottom temperature: {temp3:.1f}°C")
+        else:
+            logger.debug("DHW Bottom temperature sensor is disabled or unavailable")
         
-        # Execute furnace control logic
-        control_action = self.controller.control_furnace()
-        if control_action:
-            status = self.controller.get_system_status()
-            furnace_state = "ON" if status.get('furnace_running') else "OFF"
-            logger.info(f"Furnace control action: {furnace_state}")
+        # Execute furnace control logic (only if DHW 1 is enabled)
+        if temp1 is not None:
+            control_action = self.controller.control_furnace()
+            if control_action:
+                status = self.controller.get_system_status()
+                furnace_state = "ON" if status.get('furnace_running') else "OFF"
+                logger.info(f"Furnace control action: {furnace_state}")
+        else:
+            logger.debug("Skipping furnace control - DHW Top sensor is disabled")
         
         # Log system status periodically (every 10 cycles)
         if hasattr(self, '_cycle_count'):
@@ -142,11 +151,18 @@ class Command(BaseCommand):
         
         if self._cycle_count % 10 == 0:
             status = self.controller.get_system_status()
+            enabled_sensors = []
+            if status.get('dhw_temperature') is not None:
+                enabled_sensors.append(f"DHW Top={status.get('dhw_temperature', 0):.1f}°C")
+            if status.get('dhw_temperature_2') is not None:
+                enabled_sensors.append(f"DHW Middle={status.get('dhw_temperature_2', 0):.1f}°C")
+            if status.get('dhw_temperature_3') is not None:
+                enabled_sensors.append(f"DHW Bottom={status.get('dhw_temperature_3', 0):.1f}°C")
+            
+            sensor_status = ", ".join(enabled_sensors) if enabled_sensors else "No enabled sensors"
             logger.info(f"System status: Mode={status.get('control_mode')}, "
                        f"Furnace={status.get('furnace_running')}, "
-                       f"DHW Top={status.get('dhw_temperature', 0):.1f}°C, "
-                       f"DHW Middle={status.get('dhw_temperature_2', 0):.1f}°C, "
-                       f"DHW Bottom={status.get('dhw_temperature_3', 0):.1f}°C")
+                       f"Sensors: {sensor_status}")
     
     def _signal_handler(self, signum, frame):
         """Handle shutdown signals"""
