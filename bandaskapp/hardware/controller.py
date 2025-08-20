@@ -34,27 +34,21 @@ class HardwareController:
         
         logger.info("Hardware Controller initialized")
     
-    def _is_sensor_enabled(self, circuit_id: str) -> bool:
-        """Check if a sensor is enabled (not set to NONE)"""
-        return circuit_id != 'NONE'
-    
     def update_temperature(self) -> Optional[float]:
         """
         Read DHW temperature from sensor and update database
         
         Returns:
-            Current temperature value or None on error or if sensor is disabled
+            Current temperature value or None on error
         """
-        circuit_id = self.config['THERMOMETER_DHW_1_ID']
-        
-        # Skip if sensor is disabled
-        if not self._is_sensor_enabled(circuit_id):
-            logger.debug("DHW temperature sensor 1 is disabled (NONE)")
+        # Check if sensor is enabled
+        if not self._is_sensor_enabled(self.config['THERMOMETER_DHW_1_ID']):
+            logger.debug("DHW Sensor 1 is disabled, skipping temperature update")
             return None
-        
+            
         try:
             # Get DHW sensor from database using circuit ID
-            dhw_sensor = TemperatureSensor.objects.get(circuit_id=circuit_id)
+            dhw_sensor = TemperatureSensor.objects.get(circuit_id=self.config['THERMOMETER_DHW_1_ID'])
             
             # Read from hardware
             data = self.client.get_temperature(dhw_sensor.circuit_id)
@@ -110,18 +104,16 @@ class HardwareController:
         Read DHW temperature 2 (middle) from sensor and update database
         
         Returns:
-            Current temperature value or None on error or if sensor is disabled
+            Current temperature value or None on error
         """
-        circuit_id = self.config['THERMOMETER_DHW_2_ID']
-        
-        # Skip if sensor is disabled
-        if not self._is_sensor_enabled(circuit_id):
-            logger.debug("DHW temperature sensor 2 is disabled (NONE)")
+        # Check if sensor is enabled
+        if not self._is_sensor_enabled(self.config['THERMOMETER_DHW_2_ID']):
+            logger.debug("DHW Sensor 2 is disabled, skipping temperature update")
             return None
-        
+            
         try:
             # Get DHW sensor 2 from database using circuit ID
-            dhw_sensor = TemperatureSensor.objects.get(circuit_id=circuit_id)
+            dhw_sensor = TemperatureSensor.objects.get(circuit_id=self.config['THERMOMETER_DHW_2_ID'])
             
             # Read from hardware
             data = self.client.get_temperature(dhw_sensor.circuit_id)
@@ -177,18 +169,16 @@ class HardwareController:
         Read DHW temperature 3 (bottom) from sensor and update database
         
         Returns:
-            Current temperature value or None on error or if sensor is disabled
+            Current temperature value or None on error
         """
-        circuit_id = self.config['THERMOMETER_DHW_3_ID']
-        
-        # Skip if sensor is disabled
-        if not self._is_sensor_enabled(circuit_id):
-            logger.debug("DHW temperature sensor 3 is disabled (NONE)")
+        # Check if sensor is enabled
+        if not self._is_sensor_enabled(self.config['THERMOMETER_DHW_3_ID']):
+            logger.debug("DHW Sensor 3 is disabled, skipping temperature update")
             return None
-        
+            
         try:
             # Get DHW sensor 3 from database using circuit ID
-            dhw_sensor = TemperatureSensor.objects.get(circuit_id=circuit_id)
+            dhw_sensor = TemperatureSensor.objects.get(circuit_id=self.config['THERMOMETER_DHW_3_ID'])
             
             # Read from hardware
             data = self.client.get_temperature(dhw_sensor.circuit_id)
@@ -277,6 +267,11 @@ class HardwareController:
         Returns:
             True if control action was taken, False otherwise
         """
+        # Check if primary DHW sensor is enabled
+        if not self._is_sensor_enabled(self.config['THERMOMETER_DHW_1_ID']):
+            logger.debug("Primary DHW sensor is disabled, skipping furnace control")
+            return False
+            
         try:
             # Get system state
             system_state = SystemState.load()
@@ -481,6 +476,18 @@ class HardwareController:
         except Exception as e:
             logger.error(f"Failed to log system event: {e}")
     
+    def _is_sensor_enabled(self, circuit_id: str) -> bool:
+        """
+        Check if a sensor is enabled (not set to 'NONE')
+        
+        Args:
+            circuit_id: Circuit ID from configuration
+            
+        Returns:
+            True if sensor is enabled, False if disabled
+        """
+        return circuit_id != 'NONE'
+    
     def get_system_status(self) -> dict:
         """
         Get current system status
@@ -490,12 +497,10 @@ class HardwareController:
         """
         try:
             system_state = SystemState.load()
-            furnace = Relay.objects.get(circuit_id=self.config['FURNACE_RELAY_ID'])
             
-            # Initialize status with disabled sensors
+            # Initialize status with default values
             status = {
                 'control_mode': system_state.control_mode,
-                'furnace_running': furnace.current_state,
                 'dhw_temp_thresholds': {
                     'low': system_state.dhw_temp_low,
                     'high': system_state.dhw_temp_high,
@@ -503,7 +508,7 @@ class HardwareController:
                 'api_connected': self.client.get_last_error() is None,
             }
             
-            # Check DHW sensor 1
+            # Handle DHW Sensor 1 (Primary - required for basic operation)
             if self._is_sensor_enabled(self.config['THERMOMETER_DHW_1_ID']):
                 try:
                     dhw_sensor = TemperatureSensor.objects.get(circuit_id=self.config['THERMOMETER_DHW_1_ID'])
@@ -513,19 +518,21 @@ class HardwareController:
                         'last_reading': dhw_sensor.last_reading,
                     })
                 except TemperatureSensor.DoesNotExist:
+                    logger.warning(f"DHW Sensor 1 with circuit ID {self.config['THERMOMETER_DHW_1_ID']} not found in database")
                     status.update({
                         'dhw_temperature': None,
                         'dhw_sensor_online': False,
                         'last_reading': None,
                     })
             else:
+                # Sensor is disabled
                 status.update({
                     'dhw_temperature': None,
                     'dhw_sensor_online': False,
                     'last_reading': None,
                 })
             
-            # Check DHW sensor 2
+            # Handle DHW Sensor 2 (Middle - optional)
             if self._is_sensor_enabled(self.config['THERMOMETER_DHW_2_ID']):
                 try:
                     dhw_sensor_2 = TemperatureSensor.objects.get(circuit_id=self.config['THERMOMETER_DHW_2_ID'])
@@ -534,17 +541,19 @@ class HardwareController:
                         'dhw_sensor_2_online': dhw_sensor_2.is_online,
                     })
                 except TemperatureSensor.DoesNotExist:
+                    logger.warning(f"DHW Sensor 2 with circuit ID {self.config['THERMOMETER_DHW_2_ID']} not found in database")
                     status.update({
                         'dhw_temperature_2': None,
                         'dhw_sensor_2_online': False,
                     })
             else:
+                # Sensor is disabled
                 status.update({
                     'dhw_temperature_2': None,
                     'dhw_sensor_2_online': False,
                 })
             
-            # Check DHW sensor 3
+            # Handle DHW Sensor 3 (Bottom - optional)
             if self._is_sensor_enabled(self.config['THERMOMETER_DHW_3_ID']):
                 try:
                     dhw_sensor_3 = TemperatureSensor.objects.get(circuit_id=self.config['THERMOMETER_DHW_3_ID'])
@@ -553,15 +562,25 @@ class HardwareController:
                         'dhw_sensor_3_online': dhw_sensor_3.is_online,
                     })
                 except TemperatureSensor.DoesNotExist:
+                    logger.warning(f"DHW Sensor 3 with circuit ID {self.config['THERMOMETER_DHW_3_ID']} not found in database")
                     status.update({
                         'dhw_temperature_3': None,
                         'dhw_sensor_3_online': False,
                     })
             else:
+                # Sensor is disabled
                 status.update({
                     'dhw_temperature_3': None,
                     'dhw_sensor_3_online': False,
                 })
+            
+            # Handle Furnace Relay (required for control)
+            try:
+                furnace = Relay.objects.get(circuit_id=self.config['FURNACE_RELAY_ID'])
+                status['furnace_running'] = furnace.current_state
+            except Relay.DoesNotExist:
+                logger.warning(f"Furnace relay with circuit ID {self.config['FURNACE_RELAY_ID']} not found in database")
+                status['furnace_running'] = False
             
             return status
             

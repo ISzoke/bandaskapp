@@ -594,7 +594,7 @@
                     }
                 }
                 sessionStorage.setItem('bandaskapp_miniGraphData', JSON.stringify(dataToSave));
-                console.log('Saved mini-graph data to sessionStorage:', Object.keys(dataToSave), 'at', new Date().toLocaleTimeString());
+                console.log('Saved mini-graph data to sessionStorage:', Object.keys(dataToSave), 'at', new Date().toLocaleTimeString('en-GB', { hour12: false }));
             } catch (error) {
                 console.error('Error saving mini-graph data:', error);
             }
@@ -605,7 +605,7 @@
                 const savedData = sessionStorage.getItem('bandaskapp_miniGraphData');
                 if (savedData) {
                     const parsedData = JSON.parse(savedData);
-                    console.log('Loaded mini-graph data from sessionStorage:', Object.keys(parsedData), 'at', new Date().toLocaleTimeString());
+                    console.log('Loaded mini-graph data from sessionStorage:', Object.keys(parsedData), 'at', new Date().toLocaleTimeString('en-GB', { hour12: false }));
                     
                     // Store the loaded data for later use when mini-graphs are created
                     window.loadedMiniGraphData = parsedData;
@@ -650,7 +650,7 @@
             
             // This interval runs continuously, regardless of tab visibility
             persistentPollingInterval = setInterval(function() {
-                console.log('PERSISTENT polling: calling updateStatus() - tab visible:', document.visibilityState, 'time:', new Date().toLocaleTimeString());
+                console.log('PERSISTENT polling: calling updateStatus() - tab visible:', document.visibilityState, 'time:', new Date().toLocaleTimeString('en-GB', { hour12: false }));
                 updateStatus();
                 
                 // Debug: Log the state of miniGraphData every 30 seconds
@@ -697,7 +697,7 @@
         // Auto-refresh status every 10 seconds
         function updateStatus() {
             updateStatusCallCount++;
-            console.log(`updateStatus() called #${updateStatusCallCount} - tab visible:`, document.visibilityState, 'time:', new Date().toLocaleTimeString());
+            console.log(`updateStatus() called #${updateStatusCallCount} - tab visible:`, document.visibilityState, 'time:', new Date().toLocaleTimeString('en-GB', { hour12: false }));
             
             fetch('/api/status/')
                 .then(response => response.json())
@@ -858,14 +858,14 @@
                         // Update last reading time
                         const lastReadingElement = document.getElementById('last-reading');
                         if (lastReadingElement) {
-                            lastReadingElement.textContent = 'Last: ' + new Date().toLocaleTimeString();
+                            lastReadingElement.textContent = 'Last: ' + new Date().toLocaleTimeString('en-GB', { hour12: false });
                         }
                         
                         // Update last update time in navigation bar
                         const lastUpdateElement = document.getElementById('last-update-display');
                         if (lastUpdateElement) {
                             const now = new Date();
-                            const timeString = now.toLocaleTimeString();
+                            const timeString = now.toLocaleTimeString('en-GB', { hour12: false });
                             lastUpdateElement.textContent = `Last: ${timeString}`;
                         }
                     }
