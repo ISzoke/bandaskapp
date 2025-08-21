@@ -19,13 +19,6 @@
             {% if dhw_sensor_1_enabled %}
             <div class="temperature-field top">
                 <div class="row">
-                    <div class="col-4">
-                        <h5 style="color: #ff6b6b; font-size: 1rem; margin-bottom: 5px;">DHW Top</h5>
-                        <div class="temperature-display">
-                            <span id="temp-dhw-1">{{ dhw_temp|floatformat:1 }}</span>°C
-                        </div>
-                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span id="sensor-status-dhw-1" class="{% if dhw_sensor_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_online %}Online{% else %}Offline{% endif %}</span></small>
-                    </div>
                     <div class="col-8 text-end">
                         <div class="mini-graph" id="mini-graph-dhw-1">
                             <div class="mini-graph-container">
@@ -33,6 +26,13 @@
                                 <div class="time-label" id="time-label-dhw-1"></div>
                             </div>
                         </div>
+                    </div>
+                    <div class="col-4">
+                        <h5 style="color: #ff6b6b; font-size: 1rem; margin-bottom: 5px;">DHW Top</h5>
+                        <div class="temperature-display">
+                            <span id="temp-dhw-1">{{ dhw_temp|floatformat:1 }}</span>°C
+                        </div>
+                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span id="sensor-status-dhw-1" class="{% if dhw_sensor_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_online %}Online{% else %}Offline{% endif %}</span></small>
                     </div>
                 </div>
             </div>
@@ -42,13 +42,6 @@
             {% if dhw_sensor_2_enabled %}
             <div class="temperature-field heating">
                 <div class="row">
-                    <div class="col-4">
-                        <h5 style="color: #ffa500; font-size: 1rem; margin-bottom: 5px;">DHW Middle</h5>
-                        <div class="temperature-display">
-                            <span id="temp-heating-1">{{ dhw_temp_2|floatformat:1 }}</span>°C
-                        </div>
-                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span id="sensor-status-heating-1" class="{% if dhw_sensor_2_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_2_online %}Online{% else %}Offline{% endif %}</span></small>
-                    </div>
                     <div class="col-8 text-end">
                         <div class="mini-graph" id="mini-graph-heating-1">
                             <div class="mini-graph-container">
@@ -57,6 +50,13 @@
                             </div>
                         </div>
                     </div>
+                    <div class="col-4">
+                        <h5 style="color: #ffa500; font-size: 1rem; margin-bottom: 5px;">DHW Middle</h5>
+                        <div class="temperature-display">
+                            <span id="temp-heating-1">{{ dhw_temp_2|floatformat:1 }}</span>°C
+                        </div>
+                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span id="sensor-status-heating-1" class="{% if dhw_sensor_2_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_2_online %}Online{% else %}Offline{% endif %}</span></small>
+                    </div>
                 </div>
             </div>
             {% endif %}
@@ -64,13 +64,6 @@
             {% if dhw_sensor_3_enabled %}
             <div class="temperature-field heating">
                 <div class="row">
-                    <div class="col-4">
-                        <h5 style="color: #ffa500; font-size: 1rem; margin-bottom: 5px;">DHW Bottom</h5>
-                        <div class="temperature-display">
-                            <span id="temp-heating-2">{{ dhw_temp_3|floatformat:1 }}</span>°C
-                        </div>
-                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span id="sensor-status-heating-2" class="{% if dhw_sensor_3_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_3_online %}Online{% else %}Offline{% endif %}</span></small>
-                    </div>
                     <div class="col-8 text-end">
                         <div class="mini-graph" id="mini-graph-heating-2">
                             <div class="mini-graph-container">
@@ -78,6 +71,13 @@
                                 <div class="time-label" id="time-label-heating-2"></div>
                             </div>
                         </div>
+                    </div>
+                    <div class="col-4">
+                        <h5 style="color: #ffa500; font-size: 1rem; margin-bottom: 5px;">DHW Bottom</h5>
+                        <div class="temperature-display">
+                            <span id="temp-heating-2">{{ dhw_temp_3|floatformat:1 }}</span>°C
+                        </div>
+                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span id="sensor-status-heating-2" class="{% if dhw_sensor_3_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_3_online %}Online{% else %}Offline{% endif %}</span></small>
                     </div>
                 </div>
             </div>
@@ -87,13 +87,6 @@
             {% if dhw_sensor_1_enabled %}
             <div class="temperature-field bottom">
                 <div class="row">
-                    <div class="col-4">
-                        <h5 style="color: #4ecdc4; font-size: 1rem; margin-bottom: 5px;">Bottom 1</h5>
-                        <div class="temperature-display">
-                            <span id="temp-bottom-1">{{ dhw_temp|floatformat:1|add:"-15" }}</span>°C
-                        </div>
-                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span class="status-on">Online</span></small>
-                    </div>
                     <div class="col-8 text-end">
                         <div class="mini-graph" id="mini-graph-bottom-1">
                             <div class="mini-graph-container">
@@ -102,18 +95,18 @@
                             </div>
                         </div>
                     </div>
+                    <div class="col-4">
+                        <h5 style="color: #4ecdc4; font-size: 1rem; margin-bottom: 5px;">Bottom 1</h5>
+                        <div class="temperature-display">
+                            <span id="temp-bottom-1">{{ dhw_temp|floatformat:1|add:"-15" }}</span>°C
+                        </div>
+                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span class="status-on">Online</span></small>
+                    </div>
                 </div>
             </div>
             
             <div class="temperature-field bottom">
                 <div class="row">
-                    <div class="col-4">
-                        <h5 style="color: #4ecdc4; font-size: 1rem; margin-bottom: 5px;">Bottom 2</h5>
-                        <div class="temperature-display">
-                            <span id="temp-bottom-2">{{ dhw_temp|floatformat:1|add:"-20" }}</span>°C
-                        </div>
-                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span class="text-muted">Online</span></small>
-                    </div>
                     <div class="col-8 text-end">
                         <div class="mini-graph" id="mini-graph-bottom-2">
                             <div class="mini-graph-container">
@@ -121,6 +114,13 @@
                                 <div class="time-label" id="time-label-bottom-2"></div>
                             </div>
                         </div>
+                    </div>
+                    <div class="col-4">
+                        <h5 style="color: #4ecdc4; font-size: 1rem; margin-bottom: 5px;">Bottom 2</h5>
+                        <div class="temperature-display">
+                            <span id="temp-bottom-2">{{ dhw_temp|floatformat:1|add:"-20" }}</span>°C
+                        </div>
+                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span class="text-muted">Online</span></small>
                     </div>
                 </div>
             </div>
@@ -466,8 +466,10 @@
             const zoomLevel = ZOOM_LEVELS[currentZoomIndex];
             const visibleWidth = canvas.width;
             const dataPointsPerPixel = zoomLevel;
-            // Get the most recent data points that fit in the visible area (newest data on left)
+            // Get the most recent data points that fit in the visible area (newest data on right)
             const maxVisiblePoints = Math.floor(visibleWidth * dataPointsPerPixel);
+            // Always start from the end of the data array to show the most recent data
+            // This ensures newest data is always anchored to the right side
             const startIndex = Math.max(0, data.length - maxVisiblePoints);
             const visibleData = data.slice(startIndex);
             
@@ -522,7 +524,7 @@
             
             console.log(`${canvasId} drawing: ${visibleData.length} visible points (startIndex: ${startIndex}, total: ${data.length})`);
             if (visibleData.length > 0) {
-                console.log(`${canvasId} data range: ${visibleData[visibleData.length-1]}°C (oldest, right) to ${visibleData[0]}°C (newest, left)`);
+                console.log(`${canvasId} data range: ${visibleData[0]}°C (oldest, left) to ${visibleData[visibleData.length-1]}°C (newest, right)`);
             }
             
             if (visibleData.length < 2) {
@@ -531,7 +533,8 @@
                     const y = canvas.height - ((visibleData[0] - minY) / yRange) * canvas.height;
                     ctx.fillStyle = color;
                     ctx.beginPath();
-                    ctx.arc(canvas.width / 2, y, 3, 0, 2 * Math.PI);
+                    // Position single point on the right side to match the new anchoring logic
+                    ctx.arc(canvas.width - 5, y, 3, 0, 2 * Math.PI);
                     ctx.fill();
                 }
                 return;
@@ -551,16 +554,17 @@
                 ctx.stroke();
             }
             
-            // Draw temperature line from left to right (newest data on left, oldest on right)
+            // Draw temperature line from left to right (oldest data on left, newest data on right)
             ctx.strokeStyle = color;
             ctx.lineWidth = 2;
             ctx.beginPath();
             
             let firstPoint = true;
             for (let i = 0; i < visibleData.length; i++) {
-                // X position: left to right (newest data on left, oldest on right)
-                // Reverse the order: newest data (last in array) goes on left
-                const x = ((visibleData.length - 1 - i) / dataPointsPerPixel);
+                // X position: left to right (oldest data on left, newest data on right)
+                // Calculate X so that newest data (last in visibleData) is anchored to the right boundary
+                // When zooming out, we want to see more history to the left while keeping newest data on the right
+                const x = canvas.width - ((visibleData.length - 1 - i) / dataPointsPerPixel);
                 const y = canvas.height - ((visibleData[i] - minY) / yRange) * canvas.height;
                 
                 if (firstPoint) {
@@ -576,7 +580,8 @@
             // Draw data points from left to right
             ctx.fillStyle = color;
             for (let i = 0; i < visibleData.length; i++) {
-                const x = ((visibleData.length - 1 - i) / dataPointsPerPixel);
+                // Use the same X positioning logic as the line drawing
+                const x = canvas.width - ((visibleData.length - 1 - i) / dataPointsPerPixel);
                 const y = canvas.height - ((visibleData[i] - minY) / yRange) * canvas.height;
                 
                 ctx.beginPath();
@@ -625,7 +630,7 @@
         }, 100);
 
         function updateData(temperature) {
-            // Add new data point to the right (end of array) - will appear on left side of graph
+            // Add new data point to the right (end of array) - will appear on right side of graph
             data.push(temperature);
             
             // Implement FIFO: if buffer is full, remove oldest data from the left (beginning)
@@ -1289,7 +1294,16 @@
     function formatTime(seconds) {
         const minutes = Math.floor(seconds / 60);
         const secs = seconds % 60;
-        return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        
+        if (minutes < 60) {
+            // Show mm:ss format when minutes < 60
+            return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        } else {
+            // Show hh:mm format when minutes >= 60
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+        }
     }
 
     function startTimer(device) {
