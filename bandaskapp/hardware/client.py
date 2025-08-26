@@ -193,6 +193,104 @@ class EVOKClient:
             self.last_error = error_msg
             return False
     
+    def get_digital_input(self, circuit_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Read digital input state
+        
+        Args:
+            circuit_id: EVOK circuit ID for the digital input
+            
+        Returns:
+            Dictionary with digital input data or None on error
+        """
+        try:
+            url = f"{self.base_url}/json/di/{circuit_id}"
+            response = self.session.get(url, timeout=self.timeout)
+            response.raise_for_status()
+            
+            data = response.json()
+            self.last_error = None
+            
+            logger.debug(f"Digital input state for {circuit_id}: {data.get('value')}")
+            return data
+            
+        except requests.exceptions.Timeout:
+            error_msg = f"Timeout reading digital input {circuit_id}"
+            logger.error(error_msg)
+            self.last_error = error_msg
+            return None
+            
+        except requests.exceptions.ConnectionError:
+            error_msg = f"Connection error reading digital input {circuit_id}"
+            logger.error(error_msg)
+            self.last_error = error_msg
+            return None
+            
+        except requests.exceptions.HTTPError as e:
+            error_msg = f"HTTP error reading digital input {circuit_id}: {e}"
+            logger.error(error_msg)
+            self.last_error = error_msg
+            return None
+            
+        except Exception as e:
+            error_msg = f"Unexpected error reading digital input {circuit_id}: {e}"
+            logger.error(error_msg)
+            self.last_error = error_msg
+            return None
+    
+    def set_digital_input(self, circuit_id: str, value: bool) -> Optional[Dict[str, Any]]:
+        """
+        Set digital input state (for simulator/testing purposes)
+        
+        Args:
+            circuit_id: EVOK circuit ID for the digital input
+            value: True for ON, False for OFF
+            
+        Returns:
+            Dictionary with result or None on error
+        """
+        try:
+            url = f"{self.base_url}/json/di/{circuit_id}"
+            payload = {"value": int(value)}
+            
+            response = self.session.post(url, json=payload, timeout=self.timeout)
+            response.raise_for_status()
+            
+            data = response.json()
+            self.last_error = None
+            
+            if data.get('success'):
+                state = "ON" if value else "OFF"
+                logger.info(f"Digital input {circuit_id} set to {state}")
+            else:
+                logger.error(f"Failed to set digital input {circuit_id}: {data}")
+            
+            return data
+            
+        except requests.exceptions.Timeout:
+            error_msg = f"Timeout setting digital input {circuit_id}"
+            logger.error(error_msg)
+            self.last_error = error_msg
+            return None
+            
+        except requests.exceptions.ConnectionError:
+            error_msg = f"Connection error setting digital input {circuit_id}"
+            logger.error(error_msg)
+            self.last_error = error_msg
+            return None
+            
+        except requests.exceptions.HTTPError as e:
+            error_msg = f"HTTP error setting digital input {circuit_id}: {e}"
+            logger.error(error_msg)
+            self.last_error = error_msg
+            return None
+            
+        except Exception as e:
+            error_msg = f"Unexpected error setting digital input {circuit_id}: {e}"
+            logger.error(error_msg)
+            self.last_error = error_msg
+            return None
+    
     def get_last_error(self) -> Optional[str]:
         """Get the last error message"""
         return self.last_error

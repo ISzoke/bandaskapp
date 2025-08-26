@@ -133,6 +133,13 @@ class Command(BaseCommand):
         else:
             logger.debug("DHW Bottom temperature sensor is disabled or unavailable")
         
+        # Update HHW temperature from enabled sensor
+        hhw_temp = self.controller.update_temperature_hhw()
+        if hhw_temp is not None:
+            logger.info(f"HHW temperature: {hhw_temp:.1f}°C")
+        else:
+            logger.debug("HHW temperature sensor is disabled or unavailable")
+        
         # Execute furnace control logic (only if DHW 1 is enabled)
         if temp1 is not None:
             control_action = self.controller.control_furnace()
@@ -158,10 +165,14 @@ class Command(BaseCommand):
                 enabled_sensors.append(f"DHW Middle={status.get('dhw_temperature_2', 0):.1f}°C")
             if status.get('dhw_temperature_3') is not None:
                 enabled_sensors.append(f"DHW Bottom={status.get('dhw_temperature_3', 0):.1f}°C")
+            if status.get('hhw_temperature') is not None:
+                enabled_sensors.append(f"HHW={status.get('hhw_temperature', 0):.1f}°C")
             
             sensor_status = ", ".join(enabled_sensors) if enabled_sensors else "No enabled sensors"
             logger.info(f"System status: Mode={status.get('control_mode')}, "
+                       f"Winter Regime={status.get('winter_regime_state')}, "
                        f"Furnace={status.get('furnace_running')}, "
+                       f"Pump={status.get('pump_running')}, "
                        f"Sensors: {sensor_status}")
     
     def _signal_handler(self, signum, frame):

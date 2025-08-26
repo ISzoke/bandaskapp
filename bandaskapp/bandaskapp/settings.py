@@ -126,13 +126,44 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # BandaskApp Configuration
 BANDASKAPP_CONFIG = {
-    'THERMOMETER_DHW_1_ID': '2895DCD509000035',  # DHW temperature sensor circuit ID
-    'THERMOMETER_DHW_2_ID': 'NONE', #'2895DCD509000036',  # DHW temperature sensor circuit ID
-    'THERMOMETER_DHW_3_ID': 'NONE', #'2895DCD509000037',  # DHW temperature sensor circuit ID
-    'THERMOMETER_HHW_1_ID': '2895DCD509000038',  # HHW temperature sensor circuit ID
-    'THERMOMETER_HHW_2_ID': '2895DCD509000039',  # HHW temperature sensor circuit ID
-    'THERMOMETER_RHHW_1_ID': '2895DCD509000040',  # RHHW temperature sensor circuit ID
-    'THERMOMETER_FHHW_1_ID': '2895DCD509000041',  # FHHW temperature sensor circuit ID
+    # Thermometer Configuration - Array-based approach
+    'THERMOMETERS': [
+        {
+            'id': '2895DCD509000035',  # Circuit ID
+            'label': 'DHW Top',        # Display label (NONE = not shown)
+            'color': '#ff6b6b'         # UI color
+        },
+        {
+            'id': '2895DCD509000036',
+            'label': 'DHW Middle', 
+            'color': '#ffa500'
+        },
+        {
+            'id': '2895DCD509000037',
+            'label': 'DHW Bottom',
+            'color': '#ffa500'
+        },
+        {
+            'id': '2895DCD509000038',
+            'label': 'NONE',           # Not shown in UI
+            'color': '#ff6b6b'
+        },
+        {
+            'id': '2895DCD509000039',
+            'label': 'NONE',           # Not shown in UI
+            'color': '#ff6b6b'
+        },
+        {
+            'id': '2895DCD509000040',
+            'label': 'NONE',           # Not shown in UI
+            'color': '#ff6b6b'
+        },
+        {
+            'id': '2895DCD509000041',
+            'label': 'NONE',           # Not shown in UI
+            'color': '#ff6b6b'
+        }
+    ],
     'FURNACE_RELAY_ID': '1_01',  # Furnace relay circuit ID
     'PUMP_RELAY_ID': '1_02',  # Pump relay circuit ID
     'HEATING_CONTROL_UNIT_ID': '1_01',  # Heating control unit digital input circuit ID
@@ -151,5 +182,13 @@ BANDASKAPP_CONFIG = {
     'DHW_THRESHOLDS': {
         'low': 45.0,  # DHW low temperature threshold
         'high': 60.0,  # DHW high temperature threshold
-    }
+    },
+    'HHW_THRESHOLDS': {
+        'low': 45.0,  # HHW low temperature threshold (initially same as DHW)
+        'high': 60.0,  # HHW high temperature threshold (initially same as DHW)
+    },
+    
+    # Control Circuit Configuration
+    'CONTROL_DHW_ID': '2895DCD509000035',  # Control temperature sensor for DHW (same as THERMOMETER_DHW_1_ID)
+    'CONTROL_HHW_ID': '2895DCD509000035',  # Control temperature sensor for HHW (same as THERMOMETER_HHW_1_ID)
 }

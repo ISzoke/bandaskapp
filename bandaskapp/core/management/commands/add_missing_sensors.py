@@ -13,7 +13,7 @@ class Command(BaseCommand):
         sensors_to_create = [
             {
                 'name': 'DHW Temperature Sensor 2 (Middle)',
-                'circuit_id': config['THERMOMETER_DHW_2_ID'],
+                'circuit_id': config['THERMOMETERS'][1]['id'],
                 'location': 'DHW middle',
                 'is_active': True,
                 'current_value': 0.0,
@@ -21,7 +21,7 @@ class Command(BaseCommand):
             },
             {
                 'name': 'DHW Temperature Sensor 3 (Bottom)',
-                'circuit_id': config['THERMOMETER_DHW_3_ID'],
+                'circuit_id': config['THERMOMETERS'][2]['id'],
                 'location': 'DHW bottom',
                 'is_active': True,
                 'current_value': 0.0,

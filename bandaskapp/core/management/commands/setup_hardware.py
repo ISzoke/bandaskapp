@@ -13,7 +13,7 @@ class Command(BaseCommand):
         
         # Create DHW temperature sensor
         dhw_sensor, created = TemperatureSensor.objects.get_or_create(
-            circuit_id=config['THERMOMETER_DHW_1_ID'],
+            circuit_id=config['CONTROL_DHW_ID'],
             defaults={
                 'name': 'DHW-1',
                 'location': 'Upper tank',

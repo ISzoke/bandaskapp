@@ -33,97 +33,32 @@ app = Flask(__name__)
 
 # Get configuration from Django settings
 CONFIG = settings.BANDASKAPP_CONFIG
-THERMOMETER_DHW_1_ID = CONFIG['THERMOMETER_DHW_1_ID']
-THERMOMETER_DHW_2_ID = CONFIG['THERMOMETER_DHW_2_ID']
-THERMOMETER_DHW_3_ID = CONFIG['THERMOMETER_DHW_3_ID']
-THERMOMETER_HHW_1_ID = CONFIG['THERMOMETER_HHW_1_ID']
-THERMOMETER_HHW_2_ID = CONFIG['THERMOMETER_HHW_2_ID']
-THERMOMETER_RHHW_1_ID = CONFIG['THERMOMETER_RHHW_1_ID']
-THERMOMETER_FHHW_1_ID = CONFIG['THERMOMETER_FHHW_1_ID']
 FURNACE_RELAY_ID = CONFIG['FURNACE_RELAY_ID']
 PUMP_RELAY_ID = CONFIG['PUMP_RELAY_ID']
 HEATING_CONTROL_UNIT_ID = CONFIG['HEATING_CONTROL_UNIT_ID']
+CONTROL_DHW_ID = CONFIG['CONTROL_DHW_ID']
+CONTROL_HHW_ID = CONFIG['CONTROL_HHW_ID']
 
 class EVOKSimulator:
     def __init__(self):
-        # Temperature sensors - DHW sensor starts below threshold
+        # Temperature sensors - Initialize from new array-based configuration
         self.sensors = {}
-        if THERMOMETER_DHW_1_ID != "NONE":
-            self.sensors[THERMOMETER_DHW_1_ID] = {  # DHW sensor
-                'dev': 'temp',
-                'circuit': THERMOMETER_DHW_1_ID,
-                'address': '28.95DCD5090000.35',  # Keep address format for compatibility
-                'value': 15.0,  # Start below 45°C threshold
-                'lost': False,
-                'time': time.time(),
-                'type': 'DS18B20'
-            }
-
-        if THERMOMETER_DHW_2_ID != "NONE":
-            self.sensors[THERMOMETER_DHW_2_ID] = {  # DHW sensor
-                'dev': 'temp',
-                'circuit': THERMOMETER_DHW_2_ID,
-                'address': '28.95DCD5090000.36',  # Keep address format for compatibility
-                'value': 15.0,  # Start below 45°C threshold
-                'lost': False,
-                'time': time.time(),
-                'type': 'DS18B20'
-            }
-
-        if THERMOMETER_DHW_3_ID != "NONE":
-            self.sensors[THERMOMETER_DHW_3_ID] = {  # DHW sensor
-                'dev': 'temp',
-                'circuit': THERMOMETER_DHW_3_ID,
-                'address': '28.95DCD5090000.37',  # Keep address format for compatibility
-                'value': 15.0,  # Start below 45°C threshold
-                'lost': False,
-                'time': time.time(),
-                'type': 'DS18B20'
-            }
-
-        if THERMOMETER_HHW_1_ID != "NONE":
-            self.sensors[THERMOMETER_HHW_1_ID] = {  # DHW sensor
-                'dev': 'temp',
-                'circuit': THERMOMETER_HHW_1_ID,
-                'address': '28.95DCD5090000.38',  # Keep address format for compatibility
-                'value': 15.0,  # Start below 45°C threshold
-                'lost': False,
-                'time': time.time(),
-                'type': 'DS18B20'
-            }
-
-        if THERMOMETER_HHW_2_ID != "NONE":
-            self.sensors[THERMOMETER_HHW_2_ID] = {  # DHW sensor
-                'dev': 'temp',
-                'circuit': THERMOMETER_HHW_2_ID,
-                'address': '28.95DCD5090000.39',  # Keep address format for compatibility
-                'value': 15.0,  # Start below 45°C threshold
-                'lost': False,
-                'time': time.time(),
-                'type': 'DS18B20'
-            }
-
-        if THERMOMETER_RHHW_1_ID != "NONE":
-            self.sensors[THERMOMETER_RHHW_1_ID] = {  # DHW sensor
-                'dev': 'temp',
-                'circuit': THERMOMETER_RHHW_1_ID,
-                'address': '28.95DCD5090000.40',  # Keep address format for compatibility
-                'value': 15.0,  # Start below 45°C threshold
-                'lost': False,
-                'time': time.time(),
-                'type': 'DS18B20'
-            }
-
-        if THERMOMETER_FHHW_1_ID != "NONE":
-            self.sensors[THERMOMETER_FHHW_1_ID] = {  # DHW sensor
-                'dev': 'temp',
-                'circuit': THERMOMETER_FHHW_1_ID,
-                'address': '28.95DCD5090000.41',  # Keep address format for compatibility
-                'value': 15.0,  # Start below 45°C threshold
-                'lost': False,
-                'time': time.time(),
-                'type': 'DS18B20'
-            }
+        
+        # Process thermometer configuration from settings
+        for i, thermometer in enumerate(CONFIG['THERMOMETERS']):
+            if thermometer['id'] != 'NONE':
+                # Generate address based on index for compatibility
+                address = f"28.95DCD5090000.{35 + i:02d}"
+                
+                self.sensors[thermometer['id']] = {
+                    'dev': 'temp',
+                    'circuit': thermometer['id'],
+                    'address': address,
+                    'value': 15.0,  # Start below 45°C threshold
+                    'lost': False,
+                    'time': time.time(),
+                    'type': 'DS18B20'
+                }
 
 
         # Relays - Furnace relay starts OFF
@@ -168,9 +103,17 @@ class EVOKSimulator:
         self.old_settings = None
         self.setup_keyboard()
         
+        # Heating control unit cycling parameters
+        self.heating_control_cycle_start = time.time()
+        self.heating_control_cycle_period = 15  # 15 seconds per state
+        self.heating_control_manual_state = None  # None = auto cycling, 0/1 = manual state
+        
         # Start background threads
         self.simulation_thread = threading.Thread(target=self._simulate_temperature, daemon=True)
         self.simulation_thread.start()
+        
+        self.heating_control_thread = threading.Thread(target=self._simulate_heating_control, daemon=True)
+        self.heating_control_thread.start()
         
         self.keyboard_thread = threading.Thread(target=self._handle_keyboard, daemon=True)
         self.keyboard_thread.start()
@@ -180,7 +123,12 @@ class EVOKSimulator:
         self.heartbeat_thread.start()
         
         print("EVOK Simulator started")
-        print(f"DHW Sensor: {THERMOMETER_DHW_1_ID}")
+        # Display control configuration
+        print(f"Control DHW ID: {CONTROL_DHW_ID}")
+        if CONTROL_HHW_ID != CONTROL_DHW_ID:
+            print(f"Control HHW ID: {CONTROL_HHW_ID} (separate from DHW)")
+        else:
+            print(f"Control HHW ID: {CONTROL_HHW_ID} (same as DHW)")
         print(f"Furnace Relay: {FURNACE_RELAY_ID}")
         print("")
         print("🎛️  SIMULATOR CONTROLS:")
@@ -188,6 +136,7 @@ class EVOKSimulator:
         print("   ↑ - Increase temperature (+1°C) [Manual mode]")
         print("   ↓ - Decrease temperature (-1°C) [Manual mode]")
         print("   A - Reset to auto cycle")
+        print("   H - Toggle heating control unit state")
         print("   Q - Quit simulator")
         print("")
         print(f"🔄 Auto mode: Cycling between {self.temp_min}°C - {self.temp_max}°C (sin wave, {self.cycle_period/60:.1f} min cycle)")
@@ -237,18 +186,29 @@ class EVOKSimulator:
                         self.cycle_start_time = time.time()
                         print(f"\r{datetime.now().strftime('%H:%M:%S')} - Reset to AUTO mode")
                         
+                    elif key.lower() == 'h':
+                        # Toggle heating control unit state
+                        current_state = self.inputs[HEATING_CONTROL_UNIT_ID]['value']
+                        new_state = 1 - current_state  # Toggle between 0 and 1
+                        self.heating_control_manual_state = new_state
+                        self.inputs[HEATING_CONTROL_UNIT_ID]['value'] = new_state
+                        state_name = "ON" if new_state else "OFF"
+                        print(f"\r{datetime.now().strftime('%H:%M:%S')} - Heating Control Unit: {state_name} (Manual)")
+                        
                     elif key == '\x1b':  # ESC sequence for arrow keys
                         key = sys.stdin.read(2)
                         if key == '[A':  # Up arrow
                             if self.simulation_mode == 'manual':
                                 self.manual_temp_adjustment += 1.0
-                                new_temp = self.sensors[THERMOMETER_DHW_1_ID]['value'] + self.manual_temp_adjustment
-                                print(f"\r{datetime.now().strftime('%H:%M:%S')} - Manual: ↑ {new_temp:.1f}°C")
+                                if CONTROL_DHW_ID in self.sensors:
+                                    new_temp = self.sensors[CONTROL_DHW_ID]['value'] + self.manual_temp_adjustment
+                                    print(f"\r{datetime.now().strftime('%H:%M:%S')} - Manual: ↑ {new_temp:.1f}°C")
                         elif key == '[B':  # Down arrow
                             if self.simulation_mode == 'manual':
                                 self.manual_temp_adjustment -= 1.0
-                                new_temp = self.sensors[THERMOMETER_DHW_1_ID]['value'] + self.manual_temp_adjustment
-                                print(f"\r{datetime.now().strftime('%H:%M:%S')} - Manual: ↓ {new_temp:.1f}°C")
+                                if CONTROL_DHW_ID in self.sensors:
+                                    new_temp = self.sensors[CONTROL_DHW_ID]['value'] + self.manual_temp_adjustment
+                                    print(f"\r{datetime.now().strftime('%H:%M:%S')} - Manual: ↓ {new_temp:.1f}°C")
                                 
             except:
                 time.sleep(0.1)
@@ -293,11 +253,40 @@ class EVOKSimulator:
                 print(f"❌ Heartbeat monitor error: {e}")
                 time.sleep(5)
     
+    def _simulate_heating_control(self):
+        """Background thread to simulate heating control unit cycling"""
+        while True:
+            try:
+                # Only auto-cycle if not in manual mode
+                if self.heating_control_manual_state is None:
+                    current_time = time.time()
+                    elapsed_time = current_time - self.heating_control_cycle_start
+                    
+                    # Calculate current state based on 15-second intervals
+                    cycle_position = int(elapsed_time / self.heating_control_cycle_period) % 2
+                    new_state = cycle_position  # 0 or 1
+                    
+                    old_state = self.inputs[HEATING_CONTROL_UNIT_ID]['value']
+                    if old_state != new_state:
+                        self.inputs[HEATING_CONTROL_UNIT_ID]['value'] = new_state
+                        state_name = "ON" if new_state else "OFF"
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] Heating Control Unit: {state_name} (Auto-cycle)")
+                
+                time.sleep(1)  # Check every second
+                
+            except Exception as e:
+                print(f"❌ Heating control simulation error: {e}")
+                time.sleep(5)
+    
     def _simulate_temperature(self):
         """Background thread to simulate realistic temperature changes"""
         while True:
             try:
-                dhw_sensor = self.sensors[THERMOMETER_DHW_1_ID]
+                # Use CONTROL_DHW_ID for temperature simulation
+                if CONTROL_DHW_ID not in self.sensors:
+                    time.sleep(1)
+                    continue
+                dhw_sensor = self.sensors[CONTROL_DHW_ID]
                 furnace_relay = self.relays[FURNACE_RELAY_ID]
                 
                 current_temp = dhw_sensor['value']
@@ -328,12 +317,22 @@ class EVOKSimulator:
                 old_temp = dhw_sensor['value']
                 dhw_sensor['value'] = round(new_temp, 1)
                 dhw_sensor['time'] = time.time()
-                if THERMOMETER_DHW_2_ID in self.sensors:
-                    self.sensors[THERMOMETER_DHW_2_ID]['value'] = (dhw_sensor['value'] - 10) * 0.8
-                    self.sensors[THERMOMETER_DHW_2_ID]['time'] = dhw_sensor['time']
-                if THERMOMETER_DHW_3_ID in self.sensors:
-                    self.sensors[THERMOMETER_DHW_3_ID]['value'] = (dhw_sensor['value'] - 20) * 0.6
-                    self.sensors[THERMOMETER_DHW_3_ID]['time'] = dhw_sensor['time']
+                # Update CONTROL_HHW_ID if it's different from CONTROL_DHW_ID
+                if CONTROL_HHW_ID != CONTROL_DHW_ID and CONTROL_HHW_ID in self.sensors:
+                    self.sensors[CONTROL_HHW_ID]['value'] = dhw_sensor['value']
+                    self.sensors[CONTROL_HHW_ID]['time'] = dhw_sensor['time']
+                
+                # Update other enabled thermometers with calculated values (excluding control sensors)
+                for i, thermometer in enumerate(CONFIG['THERMOMETERS']):
+                    if (i > 0 and thermometer['id'] != 'NONE' and 
+                        thermometer['id'] in self.sensors and 
+                        thermometer['id'] != CONTROL_DHW_ID and 
+                        thermometer['id'] != CONTROL_HHW_ID):
+                        if i == 1:  # Second thermometer
+                            self.sensors[thermometer['id']]['value'] = (dhw_sensor['value'] - 10) * 0.8
+                        elif i == 2:  # Third thermometer
+                            self.sensors[thermometer['id']]['value'] = (dhw_sensor['value'] - 20) * 0.6
+                        self.sensors[thermometer['id']]['time'] = dhw_sensor['time']
 
                 self.manual_temp_adjustment = 0.0
 
@@ -350,7 +349,9 @@ class EVOKSimulator:
                         if furnace_on:
                             status += " + HEATING"
                     
-                    print(f"[{datetime.now().strftime('%H:%M:%S')}] DHW: {new_temp:.1f}°C ({status})")
+                    print(f"[{datetime.now().strftime('%H:%M:%S')}] {CONTROL_DHW_ID}: {new_temp:.1f}°C ({status})")
+                    if CONTROL_HHW_ID != CONTROL_DHW_ID and CONTROL_HHW_ID in self.sensors:
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] {CONTROL_HHW_ID}: {new_temp:.1f}°C (copied from DHW)")
                 
             except Exception as e:
                 print(f"❌ Simulation error: {e}")
@@ -386,6 +387,23 @@ class EVOKSimulator:
                 'result': self.relays[circuit_id].copy()
             }
         return {'success': False, 'error': 'Relay not found'}
+    
+    def get_digital_input(self, circuit_id):
+        """Get digital input state"""
+        if circuit_id in self.inputs:
+            # Return full EVOK-compatible response
+            return {
+                'dev': 'di',
+                'circuit': circuit_id,
+                'value': self.inputs[circuit_id]['value'],
+                'debounce': 30,
+                'counter_modes': ['Enabled', 'Disabled'],
+                'counter_mode': 'Enabled',
+                'counter': 0,
+                'mode': 'Simple',
+                'modes': ['Simple', 'DirectSwitch']
+            }
+        return None
 
 # Global simulator instance
 simulator = EVOKSimulator()
@@ -419,6 +437,33 @@ def set_relay(circuit_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/json/di/<circuit_id>', methods=['GET'])
+def get_digital_input(circuit_id):
+    """EVOK API endpoint for digital input reading"""
+    data = simulator.get_digital_input(circuit_id)
+    if data:
+        return jsonify(data)
+    return jsonify({'error': 'Digital input not found'}), 404
+
+@app.route('/json/di/<circuit_id>', methods=['POST'])
+def set_digital_input(circuit_id):
+    """EVOK API endpoint for digital input setting (for simulator/testing)"""
+    try:
+        data = request.get_json()
+        if not data or 'value' not in data:
+            return jsonify({'success': False, 'error': 'Missing value parameter'}), 400
+        
+        # For simulator, we can directly set the input value
+        if circuit_id == HEATING_CONTROL_UNIT_ID:
+            simulator.inputs[circuit_id]['value'] = int(data['value'])
+            # Reset manual override if setting value
+            simulator.heating_control_manual_state = int(data['value'])
+            return jsonify({'success': True, 'result': simulator.inputs[circuit_id]})
+        
+        return jsonify({'success': False, 'error': 'Digital input not supported'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/status', methods=['GET'])
 def status():
     """Status endpoint for debugging"""
@@ -440,8 +485,14 @@ def status():
             'temp_range': f"{simulator.temp_min}°C - {simulator.temp_max}°C"
         },
         'manual_adjustment': simulator.manual_temp_adjustment,
+        'heating_control': {
+            'current_state': simulator.inputs[HEATING_CONTROL_UNIT_ID]['value'],
+            'manual_override': simulator.heating_control_manual_state is not None,
+            'cycle_period_seconds': simulator.heating_control_cycle_period
+        },
         'sensors': simulator.sensors,
         'relays': simulator.relays,
+        'inputs': simulator.inputs,
         'timestamp': datetime.now().isoformat()
     })
 
@@ -452,13 +503,17 @@ if __name__ == '__main__':
     print("BandaskApp EVOK Simulator - Enhanced Version")
     print("="*60)
     print("API Endpoints:")
-    print(f"  Temperature Sensor (DHW): http://localhost:8080/json/temp/{THERMOMETER_DHW_1_ID}")
+    # Display control temperature sensor endpoints
+    print(f"  Control DHW Temperature: http://localhost:8080/json/temp/{CONTROL_DHW_ID}")
+    if CONTROL_HHW_ID != CONTROL_DHW_ID:
+        print(f"  Control HHW Temperature: http://localhost:8080/json/temp/{CONTROL_HHW_ID}")
+    print(f"  All Temperature Sensors: Available at http://localhost:8080/json/temp/<circuit_id>")
     print(f"  Furnace Relay (GET):      http://localhost:8080/json/ro/{FURNACE_RELAY_ID}")
     print(f"  Furnace Relay (POST):     http://localhost:8080/json/ro/{FURNACE_RELAY_ID}")
     print(f"  Pump Relay (GET):         http://localhost:8080/json/ro/{PUMP_RELAY_ID}")
     print(f"  Pump Relay (POST):        http://localhost:8080/json/ro/{PUMP_RELAY_ID}")
-    print(f"  Heating Comtrol (GET):    http://localhost:8080/json/di/{HEATING_CONTROL_UNIT_ID}")
-    print(f"  Heating Comtrol (POST):   http://localhost:8080/json/di/{HEATING_CONTROL_UNIT_ID}")
+    print(f"  Heating Control (GET):    http://localhost:8080/json/di/{HEATING_CONTROL_UNIT_ID}")
+    print(f"  Heating Control (POST):   http://localhost:8080/json/di/{HEATING_CONTROL_UNIT_ID}")
     print("  Status:                   http://localhost:8080/status")
     print("="*60)
     

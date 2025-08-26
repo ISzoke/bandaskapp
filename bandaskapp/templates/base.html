@@ -144,6 +144,22 @@
             text-align: center;
         }
         
+        .pump-timer-inline,
+        .furnace-timer-inline {
+            position: static;
+            display: inline-block;
+            margin-left: 8px;
+            vertical-align: middle;
+            font-size: 0.7rem;
+            font-weight: normal;
+            color: #cccccc;
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 2px 4px;
+            border-radius: 3px;
+            min-width: 35px;
+            text-align: center;
+        }
+        
         .btn-success {
             background-color: #28a745;
             border-color: #28a745;
@@ -555,7 +571,7 @@
             </div>
             
             <div class="navbar-nav ms-auto">
-                <span class="nav-link" id="control-mode-display">Mode: {{ control_mode|default:"AUTO" }}</span>
+                <span class="nav-link" id="heating-controller-display">Heating controller: {% if heating_controller_state %}ON{% else %}OFF{% endif %}</span>
                 <span class="nav-link" id="api-status-display">API: {% if api_connected %}ON{% else %}OFF{% endif %}</span>
                 <span class="nav-link" id="last-update-display">Last: {{ last_reading|date:"H:i:s"|default:"Never" }}</span>
             </div>
@@ -662,11 +678,11 @@
                 if (persistentPollingInterval && updateStatusCallCount % 6 === 0) { // Every 30 seconds (6 * 5s)
                     console.log('DEBUG: miniGraphData state:', {
                         keys: Object.keys(miniGraphData),
-                        dhw1: miniGraphData['dhw-1'] ? 'exists' : 'missing',
-                        heating1: miniGraphData['heating-1'] ? 'exists' : 'missing',
-                        heating2: miniGraphData['heating-2'] ? 'exists' : 'missing',
-                        bottom1: miniGraphData['bottom-1'] ? 'exists' : 'missing',
-                        bottom2: miniGraphData['bottom-2'] ? 'exists' : 'missing'
+                        thermometer0: miniGraphData['thermometer-0'] ? 'exists' : 'missing',
+                        thermometer1: miniGraphData['thermometer-1'] ? 'exists' : 'missing',
+                        thermometer2: miniGraphData['thermometer-2'] ? 'exists' : 'missing',
+                        thermometer3: miniGraphData['thermometer-3'] ? 'exists' : 'missing',
+                        thermometer4: miniGraphData['thermometer-4'] ? 'exists' : 'missing'
                     });
                 }
             }, 5000);
@@ -704,22 +720,35 @@
             updateStatusCallCount++;
             console.log(`updateStatus() called #${updateStatusCallCount} - tab visible:`, document.visibilityState, 'time:', new Date().toLocaleTimeString('en-GB', { hour12: false }));
             
+            // Debug: Check if temperature elements exist
+            const temp0Element = document.getElementById('temp-0');
+            const temp1Element = document.getElementById('temp-1');
+            const temp2Element = document.getElementById('temp-2');
+            console.log('Temperature elements found:', {
+                'temp-0': temp0Element ? 'exists' : 'missing',
+                'temp-1': temp1Element ? 'exists' : 'missing',
+                'temp-2': temp2Element ? 'exists' : 'missing'
+            });
+            
             fetch('/api/status/')
                 .then(response => response.json())
                 .then(data => {
                     console.log('Status update received:', data); // Debug log
                     if (data.success) {
+                        console.log('Updating temperature displays...'); // Debug log
                         // Update temperature displays - only if sensors are enabled
                         if (data.dhw_sensor_1_enabled) {
-                            const dhwTempElement = document.getElementById('temp-dhw-1');
+                            const dhwTempElement = document.getElementById('temp-0');
+                            console.log('DHW sensor 1 enabled, element found:', dhwTempElement ? 'yes' : 'no', 'value:', data.dhw_temp);
                             if (dhwTempElement && data.dhw_temp !== undefined) {
                                 dhwTempElement.textContent = data.dhw_temp.toFixed(1);
+                                console.log('Updated temp-0 to:', data.dhw_temp.toFixed(1));
                             }
                         }
                         
                         // Update DHW Middle temperature display - only if sensor is enabled
                         if (data.dhw_sensor_2_enabled) {
-                            const dhwTemp2Element = document.getElementById('temp-heating-1');
+                            const dhwTemp2Element = document.getElementById('temp-1');
                             if (dhwTemp2Element && data.dhw_temp_2 !== undefined) {
                                 dhwTemp2Element.textContent = data.dhw_temp_2.toFixed(1);
                             }
@@ -727,7 +756,7 @@
                         
                         // Update DHW Bottom temperature display - only if sensor is enabled
                         if (data.dhw_sensor_3_enabled) {
-                            const dhwTemp3Element = document.getElementById('temp-heating-2');
+                            const dhwTemp3Element = document.getElementById('temp-2');
                             if (dhwTemp3Element && data.dhw_temp_3 !== undefined) {
                                 dhwTemp3Element.textContent = data.dhw_temp_3.toFixed(1);
                             }
@@ -749,36 +778,36 @@
                             let graphsUpdated = false;
                             
                             // Update DHW Top mini graph - only if sensor is enabled
-                            if (data.dhw_sensor_1_enabled && miniGraphData['dhw-1'] && data.dhw_temp !== undefined && miniGraphData['dhw-1'].updateData) {
-                                console.log('Updating DHW-1 mini-graph with:', data.dhw_temp);
-                                miniGraphData['dhw-1'].updateData(data.dhw_temp);
+                            if (data.dhw_sensor_1_enabled && miniGraphData['thermometer-0'] && data.dhw_temp !== undefined && miniGraphData['thermometer-0'].updateData) {
+                                console.log('Updating thermometer-0 mini-graph with:', data.dhw_temp);
+                                miniGraphData['thermometer-0'].updateData(data.dhw_temp);
                                 graphsUpdated = true;
                             }
                             
                             // Update DHW Middle mini graph - only if sensor is enabled
-                            if (data.dhw_sensor_2_enabled && miniGraphData['heating-1'] && data.dhw_temp_2 !== undefined && miniGraphData['heating-1'].updateData) {
-                                console.log('Updating heating-1 mini-graph with:', data.dhw_temp_2);
-                                miniGraphData['heating-1'].updateData(data.dhw_temp_2);
+                            if (data.dhw_sensor_2_enabled && miniGraphData['thermometer-1'] && data.dhw_temp_2 !== undefined && miniGraphData['thermometer-1'].updateData) {
+                                console.log('Updating thermometer-1 mini-graph with:', data.dhw_temp_2);
+                                miniGraphData['thermometer-1'].updateData(data.dhw_temp_2);
                                 graphsUpdated = true;
                             }
                             
                             // Update DHW Bottom mini graph - only if sensor is enabled
-                            if (data.dhw_sensor_3_enabled && miniGraphData['heating-2'] && data.dhw_temp_3 !== undefined && miniGraphData['heating-2'].updateData) {
-                                console.log('Updating heating-2 mini-graph with:', data.dhw_temp_3);
-                                miniGraphData['heating-2'].updateData(data.dhw_temp_3);
+                            if (data.dhw_sensor_3_enabled && miniGraphData['thermometer-2'] && data.dhw_temp_3 !== undefined && miniGraphData['thermometer-2'].updateData) {
+                                console.log('Updating thermometer-2 mini-graph with:', data.dhw_temp_3);
+                                miniGraphData['thermometer-2'].updateData(data.dhw_temp_3);
                                 graphsUpdated = true;
                             }
                             
                             // Update bottom graphs (still using calculated values) - only if DHW 1 is enabled
                             if (data.dhw_sensor_1_enabled && data.dhw_temp !== undefined) {
-                                if (miniGraphData['bottom-1'] && miniGraphData['bottom-1'].updateData) {
-                                    console.log('Updating bottom-1 mini-graph with:', data.dhw_temp - 15);
-                                    miniGraphData['bottom-1'].updateData(data.dhw_temp - 15);
+                                if (miniGraphData['thermometer-3'] && miniGraphData['thermometer-3'].updateData) {
+                                    console.log('Updating thermometer-3 mini-graph with:', data.dhw_temp - 15);
+                                    miniGraphData['thermometer-3'].updateData(data.dhw_temp - 15);
                                     graphsUpdated = true;
                                 }
-                                if (miniGraphData['bottom-2'] && miniGraphData['bottom-2'].updateData) {
-                                    console.log('Updating bottom-2 mini-graph with:', data.dhw_temp - 20);
-                                    miniGraphData['bottom-2'].updateData(data.dhw_temp - 20);
+                                if (miniGraphData['thermometer-4'] && miniGraphData['thermometer-4'].updateData) {
+                                    console.log('Updating thermometer-4 mini-graph with:', data.dhw_temp - 20);
+                                    miniGraphData['thermometer-4'].updateData(data.dhw_temp - 20);
                                     graphsUpdated = true;
                                 }
                             }
@@ -803,10 +832,10 @@
                         const furnaceToggleText = document.getElementById('furnace-toggle-text');
                         if (furnaceToggleBtn && furnaceToggleText) {
                             if (data.furnace_running) {
-                                furnaceToggleBtn.className = 'btn btn-success control-button w-100';
+                                furnaceToggleBtn.className = 'btn btn-success btn-control-furnace w-100';
                                 furnaceToggleText.textContent = 'Furnace ON';
                             } else {
-                                furnaceToggleBtn.className = 'btn btn-danger control-button w-100';
+                                furnaceToggleBtn.className = 'btn btn-danger btn-control-furnace w-100';
                                 furnaceToggleText.textContent = 'Furnace OFF';
                             }
                         }
@@ -816,11 +845,28 @@
                         const pumpToggleText = document.getElementById('pump-toggle-text');
                         if (pumpToggleBtn && pumpToggleText) {
                             if (data.pump_running) {
-                                pumpToggleBtn.className = 'btn btn-success control-button w-100';
+                                pumpToggleBtn.className = 'btn btn-success btn-control-pump w-100';
                                 pumpToggleText.textContent = 'Pump ON';
                             } else {
-                                pumpToggleBtn.className = 'btn btn-danger control-button w-100';
+                                pumpToggleBtn.className = 'btn btn-danger btn-control-pump w-100';
                                 pumpToggleText.textContent = 'Pump OFF';
+                            }
+                        }
+                        
+                        // Update winter toggle button (if it exists)
+                        const winterToggleBtn = document.getElementById('winter-toggle-btn');
+                        const winterToggleText = document.getElementById('winter-toggle-text');
+                        if (winterToggleBtn && winterToggleText && data.winter_regime_state) {
+                            winterToggleText.textContent = `Winter ${data.winter_regime_state.toUpperCase()}`;
+                            
+                            // Update button color based on winter regime state
+                            winterToggleBtn.className = 'btn btn-control-heating w-100';
+                            if (data.winter_regime_state === 'automatic') {
+                                winterToggleBtn.classList.add('btn-success');
+                            } else if (data.winter_regime_state === 'off') {
+                                winterToggleBtn.classList.add('btn-danger');
+                            } else {
+                                winterToggleBtn.classList.add('btn-primary');
                             }
                         }
                         
@@ -829,11 +875,7 @@
                             window.checkDeviceStateChanges();
                         }
                         
-                        // Update control mode
-                        const modeElement = document.getElementById('control-mode-display');
-                        if (modeElement) {
-                            modeElement.textContent = 'Mode: ' + data.control_mode.toUpperCase();
-                        }
+
                         
                         // Update sensor status
                         const sensorElements = document.querySelectorAll('[id^="sensor-status-"]');
@@ -849,6 +891,12 @@
                                 }
                             }
                         });
+                        
+                        // Update heating controller status
+                        const heatingControllerElement = document.getElementById('heating-controller-display');
+                        if (heatingControllerElement && data.heating_controller_state !== undefined) {
+                            heatingControllerElement.textContent = 'Heating controller: ' + (data.heating_controller_state ? 'ON' : 'OFF');
+                        }
                         
                         // Update API status
                         const apiElement = document.getElementById('api-status-display');
@@ -952,10 +1000,14 @@
         function updateThresholds() {
             const dhwLow = document.getElementById('dhw-low').value;
             const dhwHigh = document.getElementById('dhw-high').value;
+            const hhwLow = document.getElementById('hhw-low').value;
+            const hhwHigh = document.getElementById('hhw-high').value;
             
             sendControl('update_thresholds', {
                 'dhw_low': dhwLow,
-                'dhw_high': dhwHigh
+                'dhw_high': dhwHigh,
+                'hhw_low': hhwLow,
+                'hhw_high': hhwHigh
             });
         }
     </script>

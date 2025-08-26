@@ -22,10 +22,14 @@ class HardwareController:
         # Temperature thresholds (can be overridden by SystemState)
         self.dhw_temp_low = self.config['DHW_THRESHOLDS']['low']
         self.dhw_temp_high = self.config['DHW_THRESHOLDS']['high']
+        self.hhw_temp_low = self.config['HHW_THRESHOLDS']['low']
+        self.hhw_temp_high = self.config['HHW_THRESHOLDS']['high']
         
         # Cooldown periods (seconds)
         self.furnace_cooldown = self.config['COOLDOWN_TIMES']['furnace']
+        self.pump_cooldown = self.config['COOLDOWN_TIMES']['pump']
         self.last_furnace_switch = None
+        self.last_pump_switch = None
         
         # Temperature validation
         self.min_temp = self.config['TEMPERATURE_VALIDATION']['min_temp']
@@ -36,19 +40,19 @@ class HardwareController:
     
     def update_temperature(self) -> Optional[float]:
         """
-        Read DHW temperature from sensor and update database
+        Read DHW temperature from control sensor and update database
         
         Returns:
             Current temperature value or None on error
         """
         # Check if sensor is enabled
-        if not self._is_sensor_enabled(self.config['THERMOMETER_DHW_1_ID']):
-            logger.debug("DHW Sensor 1 is disabled, skipping temperature update")
+        if not self._is_sensor_enabled(self.config['CONTROL_DHW_ID']):
+            logger.debug("DHW Control sensor is disabled, skipping temperature update")
             return None
             
         try:
             # Get DHW sensor from database using circuit ID
-            dhw_sensor = TemperatureSensor.objects.get(circuit_id=self.config['THERMOMETER_DHW_1_ID'])
+            dhw_sensor = TemperatureSensor.objects.get(circuit_id=self.config['CONTROL_DHW_ID'])
             
             # Read from hardware
             data = self.client.get_temperature(dhw_sensor.circuit_id)
@@ -107,13 +111,13 @@ class HardwareController:
             Current temperature value or None on error
         """
         # Check if sensor is enabled
-        if not self._is_sensor_enabled(self.config['THERMOMETER_DHW_2_ID']):
+        if not self._is_sensor_enabled(self.config['THERMOMETERS'][1]['id']):
             logger.debug("DHW Sensor 2 is disabled, skipping temperature update")
             return None
             
         try:
             # Get DHW sensor 2 from database using circuit ID
-            dhw_sensor = TemperatureSensor.objects.get(circuit_id=self.config['THERMOMETER_DHW_2_ID'])
+            dhw_sensor = TemperatureSensor.objects.get(circuit_id=self.config['THERMOMETERS'][1]['id'])
             
             # Read from hardware
             data = self.client.get_temperature(dhw_sensor.circuit_id)
@@ -172,13 +176,13 @@ class HardwareController:
             Current temperature value or None on error
         """
         # Check if sensor is enabled
-        if not self._is_sensor_enabled(self.config['THERMOMETER_DHW_3_ID']):
+        if not self._is_sensor_enabled(self.config['THERMOMETERS'][2]['id']):
             logger.debug("DHW Sensor 3 is disabled, skipping temperature update")
             return None
             
         try:
             # Get DHW sensor 3 from database using circuit ID
-            dhw_sensor = TemperatureSensor.objects.get(circuit_id=self.config['THERMOMETER_DHW_3_ID'])
+            dhw_sensor = TemperatureSensor.objects.get(circuit_id=self.config['THERMOMETERS'][2]['id'])
             
             # Read from hardware
             data = self.client.get_temperature(dhw_sensor.circuit_id)
@@ -229,6 +233,71 @@ class HardwareController:
             self._log_system_event('error', f'Error updating DHW temperature 3: {e}')
             return None
     
+    def update_temperature_hhw(self) -> Optional[float]:
+        """
+        Read HHW temperature from sensor and update database
+        
+        Returns:
+            Current temperature value or None on error
+        """
+        # Check if sensor is enabled
+        if not self._is_sensor_enabled(self.config['CONTROL_HHW_ID']):
+            logger.debug("HHW Sensor is disabled, skipping temperature update")
+            return None
+            
+        try:
+            # Get HHW sensor from database using circuit ID
+            hhw_sensor = TemperatureSensor.objects.get(circuit_id=self.config['CONTROL_HHW_ID'])
+            
+            # Read from hardware
+            data = self.client.get_temperature(hhw_sensor.circuit_id)
+            
+            if data is None:
+                # Communication error
+                hhw_sensor.is_lost = True
+                hhw_sensor.save()
+                self._log_system_event('error', f'Failed to read HHW temperature: {self.client.get_last_error()}')
+                return None
+            
+            # Check if sensor is lost
+            if data.get('lost', True):
+                hhw_sensor.is_lost = True
+                hhw_sensor.save()
+                self._log_system_event('warning', 'HHW temperature sensor is lost')
+                return None
+            
+            # Get temperature value
+            new_temp = data.get('value')
+            if new_temp is None:
+                self._log_system_event('error', 'HHW temperature reading returned no value')
+                return None
+            
+            # Validate temperature
+            if not self._validate_temperature(hhw_sensor, new_temp):
+                return None
+            
+            # Update sensor in database
+            hhw_sensor.current_value = new_temp
+            hhw_sensor.last_reading = timezone.now()
+            hhw_sensor.is_lost = False
+            hhw_sensor.save()
+            
+            # Log temperature reading
+            TemperatureLog.objects.create(
+                sensor=hhw_sensor,
+                value=new_temp
+            )
+            
+            logger.debug(f"HHW temperature updated: {new_temp:.1f}°C")
+            return new_temp
+            
+        except TemperatureSensor.DoesNotExist:
+            self._log_system_event('error', 'HHW temperature sensor not found in database')
+            return None
+        except Exception as e:
+            self._log_system_event('error', f'Error updating HHW temperature: {e}')
+            return None
+    
     def _validate_temperature(self, sensor: TemperatureSensor, new_temp: float) -> bool:
         """
         Validate temperature reading for anomalies
@@ -268,7 +337,7 @@ class HardwareController:
             True if control action was taken, False otherwise
         """
         # Check if primary DHW sensor is enabled
-        if not self._is_sensor_enabled(self.config['THERMOMETER_DHW_1_ID']):
+        if not self._is_sensor_enabled(self.config['CONTROL_DHW_ID']):
             logger.debug("Primary DHW sensor is disabled, skipping furnace control")
             return False
             
@@ -284,45 +353,22 @@ class HardwareController:
             # Update thresholds from system state
             self.dhw_temp_low = system_state.dhw_temp_low
             self.dhw_temp_high = system_state.dhw_temp_high
+            self.hhw_temp_low = system_state.hhw_temp_low
+            self.hhw_temp_high = system_state.hhw_temp_high
             
-            # Get current temperature
-            current_temp = self.update_temperature()
-            if current_temp is None:
-                logger.warning("Cannot control furnace: no valid temperature reading")
-                return False
+            # Execute winter regime control logic
+            self.control_winter_regime()
             
-            # Get furnace relay using circuit ID
-            furnace = Relay.objects.get(circuit_id=self.config['FURNACE_RELAY_ID'])
+            # Get updated system status
+            status = self.get_system_status()
             
-            # Check cooldown period
-            if self._is_furnace_in_cooldown():
-                logger.debug("Furnace in cooldown period, skipping control")
-                return False
-            
-            # Determine if furnace should be running
-            should_run = self._should_furnace_run(current_temp, furnace.current_state)
-            
-            # Only act if state should change
-            if should_run == furnace.current_state:
-                return False
-            
-            # Set relay state
-            success = self._set_relay_state(furnace, should_run)
-            if success:
-                # Update system state
-                system_state.furnace_running = should_run
-                system_state.save()
-                
-                # Log the action
-                action = "started" if should_run else "stopped"
+            # Log the action if furnace state changed
+            if status.get('furnace_running') != system_state.furnace_running:
+                action = "started" if status.get('furnace_running') else "stopped"
                 self._log_system_event(
                     'info',
-                    f'Furnace {action} (DHW temp: {current_temp:.1f}°C, threshold: {self.dhw_temp_low}-{self.dhw_temp_high}°C)'
+                    f'Furnace {action} via winter regime control'
                 )
-                
-                # Update cooldown timer
-                self.last_furnace_switch = time.time()
-                
                 return True
             
             return False
@@ -501,6 +547,7 @@ class HardwareController:
             # Initialize status with default values
             status = {
                 'control_mode': system_state.control_mode,
+                'winter_regime_state': system_state.winter_regime_state,
                 'dhw_temp_thresholds': {
                     'low': system_state.dhw_temp_low,
                     'high': system_state.dhw_temp_high,
@@ -509,16 +556,16 @@ class HardwareController:
             }
             
             # Handle DHW Sensor 1 (Primary - required for basic operation)
-            if self._is_sensor_enabled(self.config['THERMOMETER_DHW_1_ID']):
+            if self._is_sensor_enabled(self.config['CONTROL_DHW_ID']):
                 try:
-                    dhw_sensor = TemperatureSensor.objects.get(circuit_id=self.config['THERMOMETER_DHW_1_ID'])
+                    dhw_sensor = TemperatureSensor.objects.get(circuit_id=self.config['CONTROL_DHW_ID'])
                     status.update({
                         'dhw_temperature': dhw_sensor.current_value,
                         'dhw_sensor_online': dhw_sensor.is_online,
                         'last_reading': dhw_sensor.last_reading,
                     })
                 except TemperatureSensor.DoesNotExist:
-                    logger.warning(f"DHW Sensor 1 with circuit ID {self.config['THERMOMETER_DHW_1_ID']} not found in database")
+                    logger.warning(f"DHW Sensor 1 with circuit ID {self.config['CONTROL_DHW_ID']} not found in database")
                     status.update({
                         'dhw_temperature': None,
                         'dhw_sensor_online': False,
@@ -533,15 +580,15 @@ class HardwareController:
                 })
             
             # Handle DHW Sensor 2 (Middle - optional)
-            if self._is_sensor_enabled(self.config['THERMOMETER_DHW_2_ID']):
+            if self._is_sensor_enabled(self.config['THERMOMETERS'][1]['id']):
                 try:
-                    dhw_sensor_2 = TemperatureSensor.objects.get(circuit_id=self.config['THERMOMETER_DHW_2_ID'])
+                    dhw_sensor_2 = TemperatureSensor.objects.get(circuit_id=self.config['THERMOMETERS'][1]['id'])
                     status.update({
                         'dhw_temperature_2': dhw_sensor_2.current_value,
                         'dhw_sensor_2_online': dhw_sensor_2.is_online,
                     })
                 except TemperatureSensor.DoesNotExist:
-                    logger.warning(f"DHW Sensor 2 with circuit ID {self.config['THERMOMETER_DHW_2_ID']} not found in database")
+                    logger.warning(f"DHW Sensor 2 with circuit ID {self.config['THERMOMETERS'][1]['id']} not found in database")
                     status.update({
                         'dhw_temperature_2': None,
                         'dhw_sensor_2_online': False,
@@ -554,15 +601,15 @@ class HardwareController:
                 })
             
             # Handle DHW Sensor 3 (Bottom - optional)
-            if self._is_sensor_enabled(self.config['THERMOMETER_DHW_3_ID']):
+            if self._is_sensor_enabled(self.config['THERMOMETERS'][2]['id']):
                 try:
-                    dhw_sensor_3 = TemperatureSensor.objects.get(circuit_id=self.config['THERMOMETER_DHW_3_ID'])
+                    dhw_sensor_3 = TemperatureSensor.objects.get(circuit_id=self.config['THERMOMETERS'][2]['id'])
                     status.update({
                         'dhw_temperature_3': dhw_sensor_3.current_value,
                         'dhw_sensor_3_online': dhw_sensor_3.is_online,
                     })
                 except TemperatureSensor.DoesNotExist:
-                    logger.warning(f"DHW Sensor 3 with circuit ID {self.config['THERMOMETER_DHW_3_ID']} not found in database")
+                    logger.warning(f"DHW Sensor 3 with circuit ID {self.config['THERMOMETERS'][2]['id']} not found in database")
                     status.update({
                         'dhw_temperature_3': None,
                         'dhw_sensor_3_online': False,
@@ -574,6 +621,27 @@ class HardwareController:
                     'dhw_sensor_3_online': False,
                 })
             
+            # Handle HHW Sensor (for winter regime)
+            if self._is_sensor_enabled(self.config['CONTROL_HHW_ID']):
+                try:
+                    hhw_sensor = TemperatureSensor.objects.get(circuit_id=self.config['CONTROL_HHW_ID'])
+                    status.update({
+                        'hhw_temperature': hhw_sensor.current_value,
+                        'hhw_sensor_online': hhw_sensor.is_online,
+                    })
+                except TemperatureSensor.DoesNotExist:
+                    logger.warning(f"HHW Sensor with circuit ID {self.config['CONTROL_HHW_ID']} not found in database")
+                    status.update({
+                        'hhw_temperature': None,
+                        'hhw_sensor_online': False,
+                    })
+            else:
+                # Sensor is disabled
+                status.update({
+                    'hhw_temperature': None,
+                    'hhw_sensor_online': False,
+                })
+            
             # Handle Furnace Relay (required for control)
             try:
                 furnace = Relay.objects.get(circuit_id=self.config['FURNACE_RELAY_ID'])
@@ -582,6 +650,23 @@ class HardwareController:
                 logger.warning(f"Furnace relay with circuit ID {self.config['FURNACE_RELAY_ID']} not found in database")
                 status['furnace_running'] = False
             
+            # Handle Pump Relay
+            try:
+                pump = Relay.objects.get(circuit_id=self.config['PUMP_RELAY_ID'])
+                status['pump_running'] = pump.current_state
+            except Relay.DoesNotExist:
+                logger.warning(f"Pump relay with circuit ID {self.config['PUMP_RELAY_ID']} not found in database")
+                status['pump_running'] = False
+            
+            # Handle Heating Controller Status
+            try:
+                heating_control_state = self._get_heating_control_state()
+                status['heating_controller_state'] = heating_control_state
+                logger.info(f"Added heating controller state to status: {heating_control_state}")
+            except Exception as e:
+                logger.warning(f"Error getting heating controller state: {e}")
+                status['heating_controller_state'] = None
+            
             return status
             
         except Exception as e:
@@ -589,4 +674,157 @@ class HardwareController:
             return {
                 'error': str(e)
             }
+    
+    def control_winter_regime(self) -> None:
+        """
+        Control system based on winter regime state and heating control unit
+        """
+        try:
+            system_state = SystemState.load()
+            winter_regime = system_state.winter_regime_state
+            
+            # Get current temperatures
+            dhw_temp = self._get_control_temperature(self.config['CONTROL_DHW_ID'])
+            hhw_temp = self._get_control_temperature(self.config['CONTROL_HHW_ID'])
+            
+            # Get heating control unit state
+            heating_control_state = self._get_heating_control_state()
+            
+            if winter_regime == 'off':
+                # Summer regime: only DHW control
+                self._control_summer_regime(dhw_temp)
+                
+            elif winter_regime == 'automatic':
+                # Winter regime: controlled by heating control unit
+                self._control_winter_automatic(dhw_temp, hhw_temp, heating_control_state)
+                
+            elif winter_regime == 'on':
+                # Winter regime: manual control by BandaskApp
+                self._control_winter_manual(dhw_temp, hhw_temp)
+                
+        except Exception as e:
+            self._log_system_event('error', f'Error in winter regime control: {e}')
+    
+    def _get_control_temperature(self, circuit_id: str) -> Optional[float]:
+        """Get temperature from control sensor"""
+        if not self._is_sensor_enabled(circuit_id):
+            return None
+            
+        try:
+            sensor = TemperatureSensor.objects.get(circuit_id=circuit_id)
+            return sensor.current_value
+        except TemperatureSensor.DoesNotExist:
+            return None
+    
+    def _get_heating_control_state(self) -> Optional[bool]:
+        """Get heating control unit state"""
+        try:
+            logger.info(f"Getting heating control state for circuit ID: {self.config['HEATING_CONTROL_UNIT_ID']}")
+            data = self.client.get_digital_input(self.config['HEATING_CONTROL_UNIT_ID'])
+            logger.info(f"Raw heating control data: {data}")
+            if data:
+                value = bool(data.get('value', 0))
+                logger.info(f"Heating control state: {value} (ON)" if value else f"Heating control state: {value} (OFF)")
+                return value
+            logger.warning("No data received from heating control unit")
+            return None
+        except Exception as e:
+            logger.error(f'Error reading heating control unit: {e}')
+            self._log_system_event('error', f'Error reading heating control unit: {e}')
+            return None
+    
+    def _control_summer_regime(self, dhw_temp: Optional[float]) -> None:
+        """Control system in summer regime (DHW only)"""
+        if dhw_temp is None:
+            return
+            
+        # Turn pump OFF in summer regime
+        self._set_pump_state(False)
+        
+        # Control furnace based on DHW temperature
+        system_state = SystemState.load()
+        if dhw_temp < system_state.dhw_temp_low:
+            self._set_furnace_state(True)
+        elif dhw_temp > system_state.dhw_temp_high:
+            self._set_furnace_state(False)
+    
+    def _control_winter_automatic(self, dhw_temp: Optional[float], hhw_temp: Optional[float], heating_control_state: Optional[bool]) -> None:
+        """Control system in winter automatic regime"""
+        # Load system state once at method level to avoid variable scope issues
+        system_state = SystemState.load()
+        
+        if heating_control_state is None:
+            # API error - switch to manual mode
+            system_state.winter_regime_state = 'on'
+            system_state.save()
+            self._log_system_event('warning', 'Heating control unit API error, switching to manual winter regime')
+            return
+        
+        if heating_control_state:
+            # Heating control unit requests HHW
+            self._set_pump_state(True)
+            
+            # Control furnace based on DHW OR HHW (logical OR)
+            dhw_needs_heat = dhw_temp is not None and dhw_temp < system_state.dhw_temp_low
+            hhw_needs_heat = hhw_temp is not None and hhw_temp < system_state.hhw_temp_low
+            
+            if dhw_needs_heat or hhw_needs_heat:
+                self._set_furnace_state(True)
+            elif dhw_temp is not None and hhw_temp is not None:
+                dhw_satisfied = dhw_temp > system_state.dhw_temp_high
+                hhw_satisfied = hhw_temp > system_state.hhw_temp_high
+                if dhw_satisfied and hhw_satisfied:
+                    self._set_furnace_state(False)
+        else:
+            # Heating control unit does not request HHW
+            self._set_pump_state(False)
+            
+            # Control furnace based on DHW only
+            if dhw_temp is not None:
+                if dhw_temp < system_state.dhw_temp_low:
+                    self._set_furnace_state(True)
+                elif dhw_temp > system_state.dhw_temp_high:
+                    self._set_furnace_state(False)
+    
+    def _control_winter_manual(self, dhw_temp: Optional[float], hhw_temp: Optional[float]) -> None:
+        """Control system in winter manual regime"""
+        # Pump is always ON in manual winter regime
+        self._set_pump_state(True)
+        
+        # Control furnace based on DHW OR HHW (logical OR)
+        system_state = SystemState.load()
+        dhw_needs_heat = dhw_temp is not None and dhw_temp < system_state.dhw_temp_low
+        hhw_needs_heat = hhw_temp is not None and hhw_temp < system_state.hhw_temp_low
+        
+        if dhw_needs_heat or hhw_needs_heat:
+            self._set_furnace_state(True)
+        elif dhw_temp is not None and hhw_temp is not None:
+            dhw_satisfied = dhw_temp > system_state.dhw_temp_high
+            hhw_satisfied = hhw_temp > system_state.hhw_temp_high
+            if dhw_satisfied and hhw_satisfied:
+                self._set_furnace_state(False)
+    
+    def _set_pump_state(self, state: bool) -> None:
+        """Set pump relay state with cooldown protection"""
+        if self.last_pump_switch and (time.time() - self.last_pump_switch) < self.pump_cooldown:
+            return
+            
+        try:
+            pump = Relay.objects.get(circuit_id=self.config['PUMP_RELAY_ID'])
+            if self._set_relay_state(pump, state):
+                self.last_pump_switch = time.time()
+        except Relay.DoesNotExist:
+            logger.warning(f"Pump relay with circuit ID {self.config['PUMP_RELAY_ID']} not found in database")
+    
+    def _set_furnace_state(self, state: bool) -> None:
+        """Set furnace relay state with cooldown protection"""
+        if self.last_furnace_switch and (time.time() - self.last_furnace_switch) < self.furnace_cooldown:
+            return
+            
+        try:
+            furnace = Relay.objects.get(circuit_id=self.config['FURNACE_RELAY_ID'])
+            if self._set_relay_state(furnace, state):
+                self.last_furnace_switch = time.time()
+        except Relay.DoesNotExist:
+            logger.warning(f"Furnace relay with circuit ID {self.config['FURNACE_RELAY_ID']} not found in database")
 

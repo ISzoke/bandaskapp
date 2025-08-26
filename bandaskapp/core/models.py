@@ -59,6 +59,12 @@ class SystemState(models.Model):
         ('manual', 'Manual Mode'),
     ]
     
+    WINTER_REGIME_STATES = [
+        ('off', 'Summer Regime (DHW Only)'),
+        ('automatic', 'Winter Regime (Automatic)'),
+        ('on', 'Winter Regime (Manual)'),
+    ]
+    
     control_mode = models.CharField(
         max_length=20, 
         choices=CONTROL_MODES, 
@@ -68,6 +74,14 @@ class SystemState(models.Model):
     furnace_running = models.BooleanField(default=False, help_text="Furnace is currently running")
     dhw_temp_low = models.FloatField(default=45.0, help_text="DHW low temperature threshold (°C)")
     dhw_temp_high = models.FloatField(default=60.0, help_text="DHW high temperature threshold (°C)")
+    hhw_temp_low = models.FloatField(default=45.0, help_text="HHW low temperature threshold (°C)")
+    hhw_temp_high = models.FloatField(default=60.0, help_text="HHW high temperature threshold (°C)")
+    winter_regime_state = models.CharField(
+        max_length=20,
+        choices=WINTER_REGIME_STATES,
+        default='automatic',
+        help_text="Winter regime state"
+    )
     last_update = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
     

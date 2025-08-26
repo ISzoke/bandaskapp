@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.utils import timezone
 from django.conf import settings
 from datetime import timedelta
+import json
 
 from core.models import TemperatureSensor, Relay, SystemState, SystemLog, TemperatureLog
 from hardware.controller import HardwareController
@@ -26,14 +27,35 @@ def dashboard(request):
         # Get configuration to check which sensors are enabled
         config = settings.BANDASKAPP_CONFIG
         
+        # Get system state for winter regime and thresholds
+        system_state = SystemState.load()
+        
+        # Process thermometer configuration
+        thermometers = []
+        for i, thermometer in enumerate(config['THERMOMETERS']):
+            thermometers.append({
+                'index': i,
+                'id': thermometer['id'],
+                'label': thermometer['label'],
+                'color': thermometer['color'],
+                'enabled': thermometer['id'] != 'NONE',
+                'temp_key': f'dhw_temp_{i+1}' if i < 3 else f'dhw_temp_{i+1}',
+                'online_key': f'dhw_sensor_{i+1}_online' if i < 3 else f'dhw_sensor_{i+1}_online'
+            })
+        
         context = {
             'dhw_temp': status.get('dhw_temperature', 0),
             'dhw_temp_2': status.get('dhw_temperature_2', 0),  # DHW middle
             'dhw_temp_3': status.get('dhw_temperature_3', 0),  # DHW bottom
             'dhw_temp_low': status.get('dhw_temp_thresholds', {}).get('low', 45),
             'dhw_temp_high': status.get('dhw_temp_thresholds', {}).get('high', 60),
+            'hhw_temp_low': system_state.hhw_temp_low,
+            'hhw_temp_high': system_state.hhw_temp_high,
             'furnace_running': status.get('furnace_running', False),
+            'pump_running': status.get('pump_running', False),
             'control_mode': status.get('control_mode', 'automatic'),
+            'winter_regime_state': system_state.winter_regime_state,
+            'heating_controller_state': status.get('heating_controller_state'),
             'dhw_sensor_online': status.get('dhw_sensor_online', False),
             'dhw_sensor_2_online': status.get('dhw_sensor_2_online', False),
             'dhw_sensor_3_online': status.get('dhw_sensor_3_online', False),
@@ -41,10 +63,18 @@ def dashboard(request):
             'last_reading': status.get('last_reading'),
             'recent_logs': recent_logs,
             'error': status.get('error'),
+            # Add thermometer configuration
+            'thermometers': thermometers,
             # Add sensor enabled status
-            'dhw_sensor_1_enabled': config['THERMOMETER_DHW_1_ID'] != 'NONE',
-            'dhw_sensor_2_enabled': config['THERMOMETER_DHW_2_ID'] != 'NONE',
-            'dhw_sensor_3_enabled': config['THERMOMETER_DHW_3_ID'] != 'NONE',
+            'dhw_sensor_1_enabled': config['CONTROL_DHW_ID'] != 'NONE',
+            'dhw_sensor_2_enabled': config['THERMOMETERS'][1]['id'] != 'NONE',
+            'dhw_sensor_3_enabled': config['THERMOMETERS'][2]['id'] != 'NONE',
+            # Add hardware circuit IDs for the hardware values card
+            'furnace_relay_id': config['FURNACE_RELAY_ID'],
+            'pump_relay_id': config['PUMP_RELAY_ID'],
+            'heating_control_unit_id': config['HEATING_CONTROL_UNIT_ID'],
+            'control_dhw_id': config['CONTROL_DHW_ID'],
+            'control_hhw_id': config['CONTROL_HHW_ID'],
         }
         
         return render(request, 'dashboard.html', context)
@@ -71,6 +101,9 @@ def api_status(request):
         # Get configuration to check which sensors are enabled
         config = settings.BANDASKAPP_CONFIG
         
+        # Get system state for winter regime and thresholds
+        system_state = SystemState.load()
+        
         # Format response
         response_data = {
             'dhw_temp': status.get('dhw_temperature', 0),
@@ -78,8 +111,13 @@ def api_status(request):
             'dhw_temp_3': status.get('dhw_temperature_3', 0),  # DHW bottom
             'dhw_temp_low': status.get('dhw_temp_thresholds', {}).get('low', 45),
             'dhw_temp_high': status.get('dhw_temp_thresholds', {}).get('high', 60),
+            'hhw_temp_low': system_state.hhw_temp_low,
+            'hhw_temp_high': system_state.hhw_temp_high,
             'furnace_running': status.get('furnace_running', False),
+            'pump_running': status.get('pump_running', False),
             'control_mode': status.get('control_mode', 'automatic'),
+            'winter_regime_state': system_state.winter_regime_state,
+            'heating_controller_state': status.get('heating_controller_state'),
             'dhw_sensor_online': status.get('dhw_sensor_online', False),
             'dhw_sensor_2_online': status.get('dhw_sensor_2_online', False),
             'dhw_sensor_3_online': status.get('dhw_sensor_3_online', False),
@@ -87,9 +125,9 @@ def api_status(request):
             'timestamp': timezone.now().isoformat(),
             'success': True,
             # Add sensor enabled status
-            'dhw_sensor_1_enabled': config['THERMOMETER_DHW_1_ID'] != 'NONE',
-            'dhw_sensor_2_enabled': config['THERMOMETER_DHW_2_ID'] != 'NONE',
-            'dhw_sensor_3_enabled': config['THERMOMETER_DHW_3_ID'] != 'NONE',
+            'dhw_sensor_1_enabled': config['CONTROL_DHW_ID'] != 'NONE',
+            'dhw_sensor_2_enabled': config['THERMOMETERS'][1]['id'] != 'NONE',
+            'dhw_sensor_3_enabled': config['THERMOMETERS'][2]['id'] != 'NONE',
         }
         
         if status.get('last_reading'):
@@ -169,20 +207,58 @@ class ControlView(View):
                     'message': 'Relay states synchronized'
                 })
                 
+            elif action == 'cycle_winter_regime':
+                # Cycle through winter regime states
+                system_state = SystemState.load()
+                current_state = system_state.winter_regime_state
+                
+                # Cycle: off -> automatic -> on -> off
+                if current_state == 'off':
+                    new_state = 'automatic'
+                elif current_state == 'automatic':
+                    new_state = 'on'
+                else:  # 'on'
+                    new_state = 'off'
+                
+                system_state.winter_regime_state = new_state
+                system_state.save()
+                
+                # Log the change
+                SystemLog.objects.create(
+                    level='info',
+                    message=f'Winter regime state changed to {new_state}',
+                    component='web_interface'
+                )
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Winter regime state changed to {new_state}',
+                    'new_state': new_state
+                })
+                
             elif action == 'update_thresholds':
                 # Update temperature thresholds
                 try:
                     dhw_low = float(request.POST.get('dhw_low', 45))
                     dhw_high = float(request.POST.get('dhw_high', 60))
+                    hhw_low = float(request.POST.get('hhw_low', 45))
+                    hhw_high = float(request.POST.get('hhw_high', 60))
                     
-                    # Validate thresholds
+                    # Validate DHW thresholds
                     if dhw_low >= dhw_high:
                         return JsonResponse({
                             'success': False,
-                            'error': 'Low threshold must be less than high threshold'
+                            'error': 'DHW low threshold must be less than high threshold'
                         }, status=400)
                     
-                    if dhw_low < 20 or dhw_high > 80:
+                    # Validate HHW thresholds
+                    if hhw_low >= hhw_high:
+                        return JsonResponse({
+                            'success': False,
+                            'error': 'HHW low threshold must be less than high threshold'
+                        }, status=400)
+                    
+                    if dhw_low < 20 or dhw_high > 80 or hhw_low < 20 or hhw_high > 80:
                         return JsonResponse({
                             'success': False,
                             'error': 'Temperature thresholds must be between 20°C and 80°C'
@@ -192,18 +268,20 @@ class ControlView(View):
                     system_state = SystemState.load()
                     system_state.dhw_temp_low = dhw_low
                     system_state.dhw_temp_high = dhw_high
+                    system_state.hhw_temp_low = hhw_low
+                    system_state.hhw_temp_high = hhw_high
                     system_state.save()
                     
                     # Log the change
                     SystemLog.objects.create(
                         level='info',
-                        message=f'Temperature thresholds updated: {dhw_low}°C - {dhw_high}°C',
+                        message=f'Temperature thresholds updated: DHW {dhw_low}°C-{dhw_high}°C, HHW {hhw_low}°C-{hhw_high}°C',
                         component='web_interface'
                     )
                     
                     return JsonResponse({
                         'success': True,
-                        'message': f'Temperature thresholds updated to {dhw_low}°C - {dhw_high}°C'
+                        'message': f'Temperature thresholds updated: DHW {dhw_low}°C-{dhw_high}°C, HHW {hhw_low}°C-{hhw_high}°C'
                     })
                     
                 except ValueError:
@@ -257,8 +335,46 @@ def settings_view(request):
     try:
         system_state = SystemState.load()
         
+        # Get hardware controller for current status
+        controller = HardwareController()
+        status = controller.get_system_status()
+        
+        # Get configuration for hardware circuit IDs
+        config = settings.BANDASKAPP_CONFIG
+        
+        # Process thermometer configuration
+        thermometers = []
+        for i, thermometer in enumerate(config['THERMOMETERS']):
+            thermometers.append({
+                'index': i,
+                'id': thermometer['id'],
+                'label': thermometer['label'],
+                'color': thermometer['color'],
+                'enabled': thermometer['id'] != 'NONE',
+                'temp_key': f'dhw_temp_{i+1}' if i < 3 else f'dhw_temp_{i+1}',
+                'online_key': f'dhw_sensor_{i+1}_online' if i < 3 else f'dhw_sensor_{i+1}_online'
+            })
+        
         context = {
             'system_state': system_state,
+            # Add hardware status for the hardware values card
+            'dhw_temp': status.get('dhw_temperature', 0),
+            'dhw_temp_2': status.get('dhw_temperature_2', 0),
+            'dhw_temp_3': status.get('dhw_temperature_3', 0),
+            'furnace_running': status.get('furnace_running', False),
+            'pump_running': status.get('pump_running', False),
+            'heating_controller_state': status.get('heating_controller_state'),
+            'dhw_sensor_online': status.get('dhw_sensor_online', False),
+            'dhw_sensor_2_online': status.get('dhw_sensor_2_online', False),
+            'dhw_sensor_3_online': status.get('dhw_sensor_3_online', False),
+            'api_connected': status.get('api_connected', False),
+            'thermometers': thermometers,
+            # Add hardware circuit IDs
+            'furnace_relay_id': config['FURNACE_RELAY_ID'],
+            'pump_relay_id': config['PUMP_RELAY_ID'],
+            'heating_control_unit_id': config['HEATING_CONTROL_UNIT_ID'],
+            'control_dhw_id': config['CONTROL_DHW_ID'],
+            'control_hhw_id': config['CONTROL_HHW_ID'],
         }
         
         return render(request, 'settings.html', context)
@@ -267,3 +383,52 @@ def settings_view(request):
         return render(request, 'settings.html', {
             'error': f'Error loading settings: {e}',
         })
+
+
+@csrf_exempt
+def settings_api(request):
+    """Settings API endpoint for handling POST requests"""
+    if request.method != 'POST':
+        return JsonResponse({
+            'success': False,
+            'error': 'Only POST method is allowed'
+        }, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        action = data.get('action')
+        
+        if action == 'clear_database_history':
+            # Clear all system logs
+            deleted_logs_count = SystemLog.objects.all().delete()[0]
+            
+            # Log the action
+            SystemLog.objects.create(
+                level='info',
+                message=f'Database history cleared by user. Deleted {deleted_logs_count} log entries.',
+                component='web_interface'
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Database history cleared successfully. Deleted {deleted_logs_count} log entries.',
+                'deleted_count': deleted_logs_count
+            })
+        
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': f'Unknown action: {action}'
+            }, status=400)
+            
+    except json.JSONDecodeError as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Invalid JSON data: {str(e)}'
+        }, status=400)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)

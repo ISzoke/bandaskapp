@@ -15,116 +15,48 @@
             </div>
             {% else %}
             
-            <!-- Top Temperature Field - DHW 1 -->
-            {% if dhw_sensor_1_enabled %}
-            <div class="temperature-field top">
+            <!-- Dynamic Thermometer Fields -->
+            {% for thermometer in thermometers %}
+            {% if thermometer.label != 'NONE' %}
+            <div class="temperature-field {% if forloop.first %}top{% elif forloop.counter <= 3 %}heating{% else %}bottom{% endif %}">
                 <div class="row">
                     <div class="col-8 text-end">
-                        <div class="mini-graph" id="mini-graph-dhw-1">
+                        <div class="mini-graph" id="mini-graph-{{ forloop.counter0 }}">
                             <div class="mini-graph-container">
                                 <canvas width="100%" height="100%"></canvas>
-                                <div class="time-label" id="time-label-dhw-1"></div>
+                                <div class="time-label" id="time-label-{{ forloop.counter0 }}"></div>
                             </div>
                         </div>
                     </div>
                     <div class="col-4">
-                        <h5 style="color: #ff6b6b; font-size: 1rem; margin-bottom: 5px;">DHW Top</h5>
+                        <h5 style="color: {{ thermometer.color }}; font-size: 1rem; margin-bottom: 5px;">{{ thermometer.label }}</h5>
                         <div class="temperature-display">
-                            <span id="temp-dhw-1">{{ dhw_temp|floatformat:1 }}</span>°C
+                            {% if forloop.counter == 1 %}
+                                <span id="temp-{{ forloop.counter0 }}">{{ dhw_temp|floatformat:1 }}</span>°C
+                            {% elif forloop.counter == 2 %}
+                                <span id="temp-{{ forloop.counter0 }}">{{ dhw_temp_2|floatformat:1 }}</span>°C
+                            {% elif forloop.counter == 3 %}
+                                <span id="temp-{{ forloop.counter0 }}">{{ dhw_temp_3|floatformat:1 }}</span>°C
+                            {% else %}
+                                <span id="temp-{{ forloop.counter0 }}">{{ dhw_temp|floatformat:1|add:"-15" }}</span>°C
+                            {% endif %}
                         </div>
-                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span id="sensor-status-dhw-1" class="{% if dhw_sensor_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_online %}Online{% else %}Offline{% endif %}</span></small>
+                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: 
+                            {% if forloop.counter == 1 %}
+                                <span id="sensor-status-{{ forloop.counter0 }}" class="{% if dhw_sensor_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_online %}Online{% else %}Offline{% endif %}</span>
+                            {% elif forloop.counter == 2 %}
+                                <span id="sensor-status-{{ forloop.counter0 }}" class="{% if dhw_sensor_2_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_2_online %}Online{% else %}Offline{% endif %}</span>
+                            {% elif forloop.counter == 3 %}
+                                <span id="sensor-status-{{ forloop.counter0 }}" class="{% if dhw_sensor_3_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_3_online %}Online{% else %}Offline{% endif %}</span>
+                            {% else %}
+                                <span class="status-on">Online</span>
+                            {% endif %}
+                        </small>
                     </div>
                 </div>
             </div>
             {% endif %}
-            
-            <!-- Heating Water Fields -->
-            {% if dhw_sensor_2_enabled %}
-            <div class="temperature-field heating">
-                <div class="row">
-                    <div class="col-8 text-end">
-                        <div class="mini-graph" id="mini-graph-heating-1">
-                            <div class="mini-graph-container">
-                                <canvas width="100%" height="100%"></canvas>
-                                <div class="time-label" id="time-label-heating-1"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <h5 style="color: #ffa500; font-size: 1rem; margin-bottom: 5px;">DHW Middle</h5>
-                        <div class="temperature-display">
-                            <span id="temp-heating-1">{{ dhw_temp_2|floatformat:1 }}</span>°C
-                        </div>
-                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span id="sensor-status-heating-1" class="{% if dhw_sensor_2_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_2_online %}Online{% else %}Offline{% endif %}</span></small>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-            
-            {% if dhw_sensor_3_enabled %}
-            <div class="temperature-field heating">
-                <div class="row">
-                    <div class="col-8 text-end">
-                        <div class="mini-graph" id="mini-graph-heating-2">
-                            <div class="mini-graph-container">
-                                <canvas width="100%" height="100%"></canvas>
-                                <div class="time-label" id="time-label-heating-2"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <h5 style="color: #ffa500; font-size: 1rem; margin-bottom: 5px;">DHW Bottom</h5>
-                        <div class="temperature-display">
-                            <span id="temp-heating-2">{{ dhw_temp_3|floatformat:1 }}</span>°C
-                        </div>
-                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span id="sensor-status-heating-2" class="{% if dhw_sensor_3_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_3_online %}Online{% else %}Offline{% endif %}</span></small>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-            
-            <!-- Bottom Temperature Fields - Only show if DHW 1 is enabled -->
-            {% if dhw_sensor_1_enabled %}
-            <div class="temperature-field bottom">
-                <div class="row">
-                    <div class="col-8 text-end">
-                        <div class="mini-graph" id="mini-graph-bottom-1">
-                            <div class="mini-graph-container">
-                                <canvas width="100%" height="100%"></canvas>
-                                <div class="time-label" id="time-label-bottom-1"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <h5 style="color: #4ecdc4; font-size: 1rem; margin-bottom: 5px;">Bottom 1</h5>
-                        <div class="temperature-display">
-                            <span id="temp-bottom-1">{{ dhw_temp|floatformat:1|add:"-15" }}</span>°C
-                        </div>
-                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span class="status-on">Online</span></small>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="temperature-field bottom">
-                <div class="row">
-                    <div class="col-8 text-end">
-                        <div class="mini-graph" id="mini-graph-bottom-2">
-                            <div class="mini-graph-container">
-                                <canvas width="100%" height="100%"></canvas>
-                                <div class="time-label" id="time-label-bottom-2"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <h5 style="color: #4ecdc4; font-size: 1rem; margin-bottom: 5px;">Bottom 2</h5>
-                        <div class="temperature-display">
-                            <span id="temp-bottom-2">{{ dhw_temp|floatformat:1|add:"-20" }}</span>°C
-                        </div>
-                        <small class="text-muted" style="font-size: 0.8rem;">Sensor: <span class="text-muted">Online</span></small>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
+            {% endfor %}
             
             {% endif %}
         </div>
@@ -136,25 +68,25 @@
             <!-- Control Buttons -->
             <div class="row mb-2">
                 <div class="col-6 mb-1">
-                    <button class="btn {% if control_mode == 'automatic' %}btn-success{% else %}btn-danger{% endif %} control-button w-100" onclick="toggleMode()">
+                    <button id="mode-toggle-btn" class="btn {% if control_mode == 'automatic' %}btn-success{% else %}btn-danger{% endif %} btn-control-mode w-100" onclick="toggleMode()">
                         <strong id="mode-toggle-text" style="font-size: 0.9rem;">Mode {{ control_mode|upper }}</strong>
                     </button>
                 </div>
                 <div class="col-6 mb-1">
-                    <button id="furnace-toggle-btn" class="btn {% if furnace_running %}btn-success{% else %}btn-danger{% endif %} control-button w-100" onclick="toggleFurnace()">
+                    <button id="furnace-toggle-btn" class="btn {% if furnace_running %}btn-success{% else %}btn-danger{% endif %} btn-control-furnace w-100" onclick="toggleFurnace()">
                         <strong id="furnace-toggle-text" style="font-size: 0.9rem;">Furnace {% if furnace_running %}ON{% else %}OFF{% endif %}</strong>
-                        <div class="timer-display" id="furnace-timer">00:00</div>
+                        <div class="timer-display furnace-timer-inline" id="furnace-timer">00:00</div>
                     </button>
                 </div>
                 <div class="col-6 mb-1">
-                    <button class="btn btn-warning control-button w-100" onclick="syncRelays()">
-                        <strong style="font-size: 0.9rem;">Sync Relays</strong>
+                    <button id="winter-toggle-btn" class="btn {% if winter_regime_state == 'automatic' %}btn-success{% elif winter_regime_state == 'off' %}btn-danger{% else %}btn-primary{% endif %} btn-control-heating w-100" onclick="cycleWinterRegime()">
+                        <strong id="winter-toggle-text" style="font-size: 0.9rem;">Winter {{ winter_regime_state|upper }}</strong>
                     </button>
                 </div>
                 <div class="col-6 mb-1">
-                    <button id="pump-toggle-btn" class="btn btn-danger control-button w-100" onclick="togglePump()">
-                        <strong id="pump-toggle-text" style="font-size: 0.9rem;">Pump OFF</strong>
-                        <div class="timer-display" id="pump-timer">00:00</div>
+                    <button id="pump-toggle-btn" class="btn btn-danger btn-control-pump w-100" onclick="togglePump()">
+                        <strong id="pump-toggle-text" style="font-size: 0.9rem;">Pump {% if pump_running %}ON{% else %}OFF{% endif %}</strong>
+                        <div class="timer-display pump-timer-inline" id="pump-timer">00:00</div>
                     </button>
                 </div>
             </div>
@@ -185,11 +117,13 @@
                                     <button class="btn btn-outline-warning btn-sm ms-1" onclick="adjustThreshold('dhw-high', 1)" style="min-width: 40px; height: 35px; font-size: 1rem;">+1</button>
                                 </div>
                             </div>
+                        </div>
+                        <div class="row">
                             <div class="col-6 mb-1">
                                 <label for="hhw-low" class="form-label" style="font-size: 0.8rem;">HHW Low (°C):</label>
                                 <div class="d-flex align-items-center">
                                     <button class="btn btn-outline-warning btn-sm me-1" onclick="adjustThreshold('hhw-low', -1)" style="min-width: 40px; height: 35px; font-size: 1rem;">-1</button>
-                                    <input type="number" class="form-control" id="hhw-low" value="45.0" min="20" max="70" step="0.5" style="text-align: center; font-size: 0.9rem; padding: 4px;">
+                                    <input type="number" class="form-control" id="hhw-low" value="{{ hhw_temp_low|floatformat:1 }}" min="20" max="70" step="0.5" style="text-align: center; font-size: 0.9rem; padding: 4px;">
                                     <button class="btn btn-outline-warning btn-sm ms-1" onclick="adjustThreshold('hhw-low', 1)" style="min-width: 40px; height: 35px; font-size: 1rem;">+1</button>
                                 </div>
                             </div>
@@ -197,7 +131,7 @@
                                 <label for="hhw-high" class="form-label" style="font-size: 0.8rem;">HHW High (°C):</label>
                                 <div class="d-flex align-items-center">
                                     <button class="btn btn-outline-warning btn-sm me-1" onclick="adjustThreshold('hhw-high', -1)" style="min-width: 40px; height: 35px; font-size: 1rem;">-1</button>
-                                    <input type="number" class="form-control" id="hhw-high" value="65.0" min="30" max="80" step="0.5" style="text-align: center; font-size: 0.9rem; padding: 4px;">
+                                    <input type="number" class="form-control" id="hhw-high" value="{{ hhw_temp_high|floatformat:1 }}" min="30" max="80" step="0.5" style="text-align: center; font-size: 0.9rem; padding: 4px;">
                                     <button class="btn btn-outline-warning btn-sm ms-1" onclick="adjustThreshold('hhw-high', 1)" style="min-width: 40px; height: 35px; font-size: 1rem;">+1</button>
                                 </div>
                             </div>
@@ -206,7 +140,7 @@
                     
                     <!-- Right side: Update button -->
                     <div class="ms-2 d-flex align-items-center">
-                        <button class="btn btn-info btn_update_thresholds" onclick="updateThresholds()" style="height: 120px; width: 40px; font-size: 0.9rem;">
+                        <button class="btn btn-info btn_update_thresholds" onclick="updateThresholds()" style="height: 140px; width: 40px; font-size: 0.9rem;">
                             <span>Update</span>
                         </button>
                     </div>
@@ -215,6 +149,8 @@
         </div>
     </div>
 </div>
+
+
 
 <!-- System Status Alert -->
 {% if not api_connected %}
@@ -740,21 +676,13 @@
         // Check if canvas elements exist and create a dynamic list based on enabled sensors
         const canvasElements = {};
         
-        // Only add sensors that are enabled and have canvas elements
-        if (document.getElementById('mini-graph-dhw-1')) {
-            canvasElements['dhw-1'] = document.getElementById('mini-graph-dhw-1');
-        }
-        if (document.getElementById('mini-graph-heating-1')) {
-            canvasElements['heating-1'] = document.getElementById('mini-graph-heating-1');
-        }
-        if (document.getElementById('mini-graph-heating-2')) {
-            canvasElements['heating-2'] = document.getElementById('mini-graph-heating-2');
-        }
-        if (document.getElementById('mini-graph-bottom-1')) {
-            canvasElements['bottom-1'] = document.getElementById('mini-graph-bottom-1');
-        }
-        if (document.getElementById('mini-graph-bottom-2')) {
-            canvasElements['bottom-2'] = document.getElementById('mini-graph-bottom-2');
+        // Dynamically detect canvas elements based on thermometer configuration
+        const maxThermometers = 10; // Reasonable upper limit
+        for (let i = 0; i < maxThermometers; i++) {
+            const canvasElement = document.getElementById(`mini-graph-${i}`);
+            if (canvasElement) {
+                canvasElements[`thermometer-${i}`] = canvasElement;
+            }
         }
         
         console.log('Canvas elements found:', canvasElements); // Debug log
@@ -765,14 +693,18 @@
                 console.log(`Creating mini graph for ${key}`); // Debug log
                 let miniGraph = null;
                 
-                if (key === 'dhw-1') {
-                    miniGraph = createMiniGraph('mini-graph-' + key, '#ff6b6b', 0);
-                } else if (key.startsWith('heating')) {
-                    const offset = key === 'heating-1' ? -5 : -10;
-                    miniGraph = createMiniGraph('mini-graph-' + key, '#ffa500', offset);
-                } else if (key.startsWith('bottom')) {
-                    const offset = key === 'bottom-1' ? -15 : -20;
-                    miniGraph = createMiniGraph('mini-graph-' + key, '#4ecdc4', offset);
+                // Extract index from key (e.g., 'thermometer-0' -> 0)
+                const index = parseInt(key.split('-')[1]);
+                
+                // Create mini graph with appropriate color and offset
+                if (index === 0) {
+                    miniGraph = createMiniGraph(`mini-graph-${index}`, '#ff6b6b', 0);
+                } else if (index <= 2) {
+                    const offset = index === 1 ? -5 : -10;
+                    miniGraph = createMiniGraph(`mini-graph-${index}`, '#ffa500', offset);
+                } else {
+                    const offset = index === 3 ? -15 : -20;
+                    miniGraph = createMiniGraph(`mini-graph-${index}`, '#4ecdc4', offset);
                 }
                 
                 if (miniGraph) {
@@ -927,6 +859,7 @@
                 if (document.getElementById('mini-graph-bottom-2')) {
                     canvasElements['bottom-2'] = document.getElementById('mini-graph-bottom-2');
                 }
+
                 
                 Object.keys(canvasElements).forEach(key => {
                     if (canvasElements[key] && !miniGraphData[key]) {
@@ -936,6 +869,7 @@
                         } else if (key.startsWith('heating')) {
                             const offset = key === 'heating-1' ? -5 : -10;
                             miniGraphData[key] = createMiniGraph('mini-graph-' + key, '#ffa500', offset);
+
                         } else if (key.startsWith('bottom')) {
                             const offset = key === 'bottom-1' ? -15 : -20;
                             miniGraphData[key] = createMiniGraph('mini-graph-' + key, '#4ecdc4', offset);
@@ -965,50 +899,54 @@
         let dhwTemp3 = null;
         
         // Only try to get temperatures from elements that exist (enabled sensors)
-        const dhwTempElement = document.getElementById('temp-dhw-1');
+        const dhwTempElement = document.getElementById('temp-0');
         if (dhwTempElement) {
             dhwTemp = parseFloat(dhwTempElement.textContent);
         }
         
-        const dhwTemp2Element = document.getElementById('temp-heating-1');
+        const dhwTemp2Element = document.getElementById('temp-1');
         if (dhwTemp2Element) {
             dhwTemp2 = parseFloat(dhwTemp2Element.textContent);
         }
         
-        const dhwTemp3Element = document.getElementById('temp-heating-2');
+        const dhwTemp3Element = document.getElementById('temp-2');
         if (dhwTemp3Element) {
             dhwTemp3 = parseFloat(dhwTemp3Element.textContent);
         }
         
+
+        
         console.log('updateMiniGraphs called, DHW temps:', dhwTemp, dhwTemp2, dhwTemp3); // Debug log
         
         // Update DHW Top mini graph - only if sensor is enabled
-        if (!isNaN(dhwTemp) && miniGraphData['dhw-1']) {
-            console.log('Updating dhw-1 mini graph with:', dhwTemp); // Debug log
-            miniGraphData['dhw-1'].updateData(dhwTemp);
+        if (!isNaN(dhwTemp) && miniGraphData['thermometer-0']) {
+            console.log('Updating thermometer-0 mini graph with:', dhwTemp); // Debug log
+            miniGraphData['thermometer-0'].updateData(dhwTemp);
         }
         
         // Update DHW Middle mini graph - only if sensor is enabled
-        if (!isNaN(dhwTemp2) && miniGraphData['heating-1']) {
-            console.log('Updating heating-1 mini graph with:', dhwTemp2); // Debug log
-            miniGraphData['heating-1'].updateData(dhwTemp2);
+        if (!isNaN(dhwTemp2) && miniGraphData['thermometer-1']) {
+            console.log('Updating thermometer-1 mini graph with:', dhwTemp2); // Debug log
+            miniGraphData['thermometer-1'].updateData(dhwTemp2);
         }
         
         // Update DHW Bottom mini graph - only if sensor is enabled
-        if (!isNaN(dhwTemp3) && miniGraphData['heating-2']) {
-            console.log('Updating heating-2 mini graph with:', dhwTemp3); // Debug log
-            miniGraphData['heating-2'].updateData(dhwTemp3);
+        if (!isNaN(dhwTemp3) && miniGraphData['thermometer-2']) {
+            console.log('Updating thermometer-2 mini graph with:', dhwTemp3); // Debug log
+            miniGraphData['thermometer-2'].updateData(dhwTemp3);
         }
+        
+
         
         // Update bottom graphs (still using calculated values for now) - only if DHW 1 is enabled
         if (!isNaN(dhwTemp)) {
-            if (miniGraphData['bottom-1']) {
-                console.log('Updating bottom-1 mini graph with:', dhwTemp - 15); // Debug log
-                miniGraphData['bottom-1'].updateData(dhwTemp - 15);
+            if (miniGraphData['thermometer-3']) {
+                console.log('Updating thermometer-3 mini graph with:', dhwTemp - 15); // Debug log
+                miniGraphData['thermometer-3'].updateData(dhwTemp - 15);
             }
-            if (miniGraphData['bottom-2']) {
-                console.log('Updating bottom-2 mini graph with:', dhwTemp - 20); // Debug log
-                miniGraphData['bottom-2'].updateData(dhwTemp - 20);
+            if (miniGraphData['thermometer-4']) {
+                console.log('Updating thermometer-4 mini graph with:', dhwTemp - 20); // Debug log
+                miniGraphData['thermometer-4'].updateData(dhwTemp - 20);
             }
         }
     }
@@ -1038,7 +976,7 @@
         
         // Get current DHW temperature from enabled sensors
         let dhwTemp = null;
-        const dhwTempElement = document.getElementById('temp-dhw-1');
+        const dhwTempElement = document.getElementById('temp-0');
         if (dhwTempElement) {
             dhwTemp = parseFloat(dhwTempElement.textContent);
         }
@@ -1128,6 +1066,7 @@
         if (document.getElementById('mini-graph-bottom-2')) {
             canvasElements['bottom-2'] = document.getElementById('mini-graph-bottom-2');
         }
+
         
         console.log('Canvas elements found:', canvasElements);
         
@@ -1147,6 +1086,7 @@
                 } else if (key.startsWith('heating')) {
                     const offset = key === 'heating-1' ? -5 : -10;
                     miniGraph = createMiniGraph('mini-graph-' + key, '#ffa500', offset);
+
                 } else if (key.startsWith('bottom')) {
                     const offset = key === 'bottom-1' ? -15 : -20;
                     miniGraph = createMiniGraph('mini-graph-' + key, '#4ecdc4', offset);
@@ -1220,6 +1160,7 @@
         const dhwHighInput = document.getElementById('dhw-high');
         const hhwLowInput = document.getElementById('hhw-low');
         const hhwHighInput = document.getElementById('hhw-high');
+
         
         if (dhwLowInput && dhwLowInput.value) {
             dhwLowInput.value = parseFloat(dhwLowInput.value).toFixed(1);
@@ -1233,6 +1174,7 @@
         if (hhwHighInput && hhwHighInput.value) {
             hhwHighInput.value = parseFloat(hhwHighInput.value).toFixed(1);
         }
+
     }
     
     // Format threshold inputs when page loads
@@ -1272,6 +1214,53 @@
             location.reload();
         } catch (error) {
             console.error('Error syncing relays:', error);
+        }
+    }
+    
+    // Function to cycle winter regime state
+    async function cycleWinterRegime() {
+        try {
+            const response = await fetch('/control/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: 'action=cycle_winter_regime'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    // Update the button text and color to show new state
+                    const winterBtn = document.getElementById('winter-toggle-btn');
+                    if (winterBtn) {
+                        const strongElement = winterBtn.querySelector('strong');
+                        if (strongElement) {
+                            strongElement.textContent = `Winter ${data.new_state.toUpperCase()}`;
+                        }
+                        
+                        // Update button color based on new state
+                        winterBtn.className = 'btn btn-control-heating w-100';
+                        if (data.new_state === 'automatic') {
+                            winterBtn.classList.add('btn-success');
+                        } else if (data.new_state === 'off') {
+                            winterBtn.classList.add('btn-danger');
+                        } else {
+                            winterBtn.classList.add('btn-primary');
+                        }
+                    }
+                    
+                    // Show success message
+                    console.log('Winter regime state changed:', data.message);
+                } else {
+                    console.error('Failed to cycle winter regime:', data.error);
+                }
+            } else {
+                console.error('HTTP error cycling winter regime:', response.status);
+            }
+        } catch (error) {
+            console.error('Error cycling winter regime:', error);
         }
     }
     
@@ -1394,10 +1383,10 @@
                     
                     // Update button state
                     if (isCurrentlyRunning) {
-                        furnaceBtn.className = 'btn btn-danger control-button w-100';
+                        furnaceBtn.className = 'btn btn-danger btn-control-furnace w-100';
                         furnaceText.textContent = 'Furnace OFF';
                     } else {
-                        furnaceBtn.className = 'btn btn-success control-button w-100';
+                        furnaceBtn.className = 'btn btn-success btn-control-furnace w-100';
                         furnaceText.textContent = 'Furnace ON';
                     }
                 }
@@ -1435,10 +1424,10 @@
                     
                     // Update button state
                     if (isCurrentlyRunning) {
-                        pumpBtn.className = 'btn btn-danger control-button w-100';
+                        pumpBtn.className = 'btn btn-danger btn-control-pump w-100';
                         pumpText.textContent = 'Pump OFF';
                     } else {
-                        pumpBtn.className = 'btn btn-success control-button w-100';
+                        pumpBtn.className = 'btn btn-success btn-control-pump w-100';
                         pumpText.textContent = 'Pump ON';
                     }
                 }

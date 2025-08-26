@@ -8,98 +8,7 @@
     </div>
 </div>
 
-<div class="row">
-    <div class="col-lg-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h4>🌡️ Temperature Thresholds</h4>
-            </div>
-            <div class="card-body">
-                <form>
-                    <div class="mb-3">
-                        <label for="dhw-low-setting" class="form-label">DHW Low Threshold (°C):</label>
-                        <input type="number" class="form-control" id="dhw-low-setting" 
-                               value="{{ system_state.dhw_temp_low }}" min="20" max="70" step="0.5">
-                        <div class="form-text text-muted">Furnace starts when temperature drops below this value</div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="dhw-high-setting" class="form-label">DHW High Threshold (°C):</label>
-                        <input type="number" class="form-control" id="dhw-high-setting" 
-                               value="{{ system_state.dhw_temp_high }}" min="30" max="80" step="0.5">
-                        <div class="form-text text-muted">Furnace stops when temperature reaches this value</div>
-                    </div>
-                    
-                    <button type="button" class="btn btn-primary control-button w-100" onclick="updateSettingsThresholds()">
-                        <strong>Update Thresholds</strong>
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-lg-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h4>ℹ️ System Information</h4>
-            </div>
-            <div class="card-body">
-                <table class="table table-dark table-borderless">
-                    <tr>
-                        <td style="color: #00ff00;"><strong>Control Mode:</strong></td>
-                        <td style="color: #ffffff;">{{ system_state.control_mode|title }}</td>
-                    </tr>
-                    <tr>
-                        <td style="color: #00ff00;"><strong>Current DHW Low:</strong></td>
-                        <td style="color: #ffffff;">{{ system_state.dhw_temp_low }}°C</td>
-                    </tr>
-                    <tr>
-                        <td style="color: #00ff00;"><strong>Current DHW High:</strong></td>
-                        <td style="color: #ffffff;">{{ system_state.dhw_temp_high }}°C</td>
-                    </tr>
-                    <tr>
-                        <td style="color: #00ff00;"><strong>Last Update:</strong></td>
-                        <td style="color: #ffffff;">{{ system_state.last_update|date:"Y-m-d H:i:s" }}</td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
 
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h4>🎛️ System Actions</h4>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3 mb-2">
-                        <button class="btn btn-warning control-button w-100" onclick="syncRelays()">
-                            <strong>Sync Relay States</strong>
-                        </button>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <button class="btn btn-info control-button w-100" onclick="location.reload()">
-                            <strong>Refresh Page</strong>
-                        </button>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <a href="{% url 'core:logs' %}" class="btn btn-secondary control-button w-100">
-                            <strong>View System Logs</strong>
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <a href="{% url 'core:dashboard' %}" class="btn btn-primary control-button w-100">
-                            <strong>Back to Dashboard</strong>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="row mt-4">
     <div class="col-12">
@@ -130,55 +39,195 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h4>🔧 System Configuration</h4>
-            </div>
-            <div class="card-body">
+                
+                <!-- Database History Management -->
+                <hr style="border-color: #444444; margin: 30px 0;">
                 <div class="row">
                     <div class="col-md-6">
-                        <h5 style="color: #00ff00;">Temperature Control</h5>
+                        <h5 style="color: #ff4444;">🗄️ Database History</h5>
+                        <p style="color: #cccccc;">Database stores system logs, temperature readings, and other historical data. This data is used for system monitoring and debugging.</p>
                         <ul style="color: #cccccc;">
-                            <li>DHW sensor monitors upper tank temperature</li>
-                            <li>Furnace automatically controlled based on thresholds</li>
-                            <li>30-second cooldown period between furnace switches</li>
-                            <li>Manual override available in manual mode</li>
+                            <li>System logs and events</li>
+                            <li>Temperature sensor readings</li>
+                            <li>Control system state changes</li>
+                            <li>Error and warning messages</li>
                         </ul>
                     </div>
                     <div class="col-md-6">
-                        <h5 style="color: #00ff00;">Safety Features</h5>
-                        <ul style="color: #cccccc;">
-                            <li>Temperature validation (0-100°C range)</li>
-                            <li>Jump detection (max 20°C per reading)</li>
-                            <li>API connectivity monitoring</li>
-                            <li>Relay state synchronization</li>
-                        </ul>
+                        <h5 style="color: #ff4444;">Clear Database History</h5>
+                        <p style="color: #cccccc;">Click the button below to permanently delete all historical data from the database. This will reset all logs and history.</p>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-danger control-button" onclick="clearDatabaseHistory()">
+                                <strong>🗑️ Clear Database History</strong>
+                            </button>
+                            <small class="text-muted">⚠️ This action cannot be undone and will permanently delete all historical data!</small>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Hardware Values Card -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4>🔌 Hardware Values</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Thermometers -->
+                    <div class="col-md-6">
+                        <h5 style="color: #00ff00;">🌡️ Thermometers</h5>
+                        <div class="table-responsive">
+                            <table class="table table-dark table-sm">
+                                <thead>
+                                    <tr>
+                                        <th style="color: #00ff00;">Circuit ID</th>
+                                        <th style="color: #00ff00;">Label</th>
+                                        <th style="color: #00ff00;">Value</th>
+                                        <th style="color: #00ff00;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for thermometer in thermometers %}
+                                    <tr>
+                                        <td style="color: #cccccc;">{{ thermometer.id }}</td>
+                                        <td style="color: #cccccc;">{{ thermometer.label }}</td>
+                                        <td style="color: #cccccc;">
+                                            {% if thermometer.id != 'NONE' %}
+                                                {% if thermometer.index == 0 %}
+                                                    {{ dhw_temp|floatformat:1 }}°C
+                                                {% elif thermometer.index == 1 %}
+                                                    {{ dhw_temp_2|floatformat:1 }}°C
+                                                {% elif thermometer.index == 2 %}
+                                                    {{ dhw_temp_3|floatformat:1 }}°C
+                                                {% endif %}
+                                            {% else %}
+                                                <span style="color: #666666;">Disabled</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if thermometer.id != 'NONE' %}
+                                                {% if thermometer.index == 0 %}
+                                                    <span class="badge {% if dhw_sensor_online %}bg-success{% else %}bg-danger{% endif %}">
+                                                        {% if dhw_sensor_online %}Online{% else %}Offline{% endif %}
+                                                    </span>
+                                                {% elif thermometer.index == 1 %}
+                                                    <span class="badge {% if dhw_sensor_2_online %}bg-success{% else %}bg-danger{% endif %}">
+                                                        {% if dhw_sensor_2_online %}Online{% else %}Offline{% endif %}
+                                                    </span>
+                                                {% elif thermometer.index == 2 %}
+                                                    <span class="badge {% if dhw_sensor_3_online %}bg-success{% else %}bg-danger{% endif %}">
+                                                        {% if dhw_sensor_3_online %}Online{% else %}Offline{% endif %}
+                                                    </span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="badge bg-secondary">Disabled</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Relays and Digital Inputs -->
+                    <div class="col-md-6">
+                        <h5 style="color: #00ff00;">⚡ Relays & Digital Inputs</h5>
+                        <div class="table-responsive">
+                            <table class="table table-dark table-sm">
+                                <thead>
+                                    <tr>
+                                        <th style="color: #00ff00;">Type</th>
+                                        <th style="color: #00ff00;">Circuit ID</th>
+                                        <th style="color: #00ff00;">Value</th>
+                                        <th style="color: #00ff00;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Furnace Relay -->
+                                    <tr>
+                                        <td style="color: #cccccc;">RO (Relay)</td>
+                                        <td style="color: #cccccc;">{{ furnace_relay_id|default:"1_01" }}</td>
+                                        <td style="color: #cccccc;">
+                                            <span class="badge {% if furnace_running %}bg-success{% else %}bg-danger{% endif %}">
+                                                {% if furnace_running %}ON{% else %}OFF{% endif %}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge {% if api_connected %}bg-success{% else %}bg-danger{% endif %}">
+                                                {% if api_connected %}Connected{% else %}Disconnected{% endif %}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    
+                                    <!-- Pump Relay -->
+                                    <tr>
+                                        <td style="color: #cccccc;">RO (Relay)</td>
+                                        <td style="color: #cccccc;">{{ pump_relay_id|default:"1_02" }}</td>
+                                        <td style="color: #cccccc;">
+                                            <span class="badge {% if pump_running %}bg-success{% else %}bg-danger{% endif %}">
+                                                {% if pump_running %}ON{% else %}OFF{% endif %}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge {% if api_connected %}bg-success{% else %}bg-danger{% endif %}">
+                                                {% if api_connected %}Connected{% else %}Disconnected{% endif %}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    
+                                    <!-- Heating Control Unit -->
+                                    <tr>
+                                        <td style="color: #cccccc;">DI (Digital Input)</td>
+                                        <td style="color: #cccccc;">{{ heating_control_unit_id|default:"1_01" }}</td>
+                                        <td style="color: #cccccc;">
+                                            <span class="badge {% if heating_controller_state %}bg-success{% else %}bg-warning{% endif %}">
+                                                {% if heating_controller_state %}ON{% else %}OFF{% endif %}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge {% if api_connected %}bg-success{% else %}bg-danger{% endif %}">
+                                                {% if api_connected %}Connected{% else %}Disconnected{% endif %}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Control IDs Information -->
+                        <div class="mt-3">
+                            <h6 style="color: #00ff00;">🎯 Control IDs</h6>
+                            <div class="row">
+                                <div class="col-6">
+                                    <small style="color: #cccccc;">
+                                        <strong>DHW Control:</strong> {{ control_dhw_id|default:"NONE" }}
+                                    </small>
+                                </div>
+                                <div class="col-6">
+                                    <small style="color: #cccccc;">
+                                        <strong>HHW Control:</strong> {{ control_hhw_id|default:"NONE" }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function updateSettingsThresholds() {
-    const dhwLow = document.getElementById('dhw-low-setting').value;
-    const dhwHigh = document.getElementById('dhw-high-setting').value;
-    
-    sendControl('update_thresholds', {
-        'dhw_low': dhwLow,
-        'dhw_high': dhwHigh
-    });
-}
+
 
 function clearMiniGraphData() {
     if (confirm('Are you sure you want to clear all mini-graph data? This action cannot be undone and will reset all graphs to empty state.')) {
@@ -196,6 +245,86 @@ function clearMiniGraphData() {
             alert('Error clearing data: ' + error.message);
         }
     }
+}
+
+function clearDatabaseHistory() {
+    if (confirm('⚠️ WARNING: This will permanently delete ALL historical data from the database!\n\nThis includes:\n• All system logs\n• Temperature sensor readings\n• Control system state changes\n• Error and warning messages\n\nThis action CANNOT be undone!\n\nAre you absolutely sure you want to proceed?')) {
+        try {
+            // Show loading state
+            const button = event.target.closest('button');
+            const originalText = button.innerHTML;
+            button.innerHTML = '<strong>🗑️ Clearing...</strong>';
+            button.disabled = true;
+            
+            // Make API call to clear database history
+            fetch('/api/settings/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'clear_database_history'
+                })
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    // Response is not JSON, get text to see what it actually is
+                    return response.text().then(text => {
+                        console.error('Non-JSON response received:', text);
+                        throw new Error(`Server returned non-JSON response (${response.status}): ${text.substring(0, 200)}`);
+                    });
+                }
+                
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                if (data.success) {
+                    alert('✅ Database history has been cleared successfully!\n\nAll historical data has been permanently deleted from the database.');
+                    console.log('Database history cleared by user');
+                } else {
+                    throw new Error(data.error || 'Unknown error occurred');
+                }
+            })
+            .catch(error => {
+                console.error('Error clearing database history:', error);
+                alert('❌ Error clearing database history: ' + error.message);
+            })
+            .finally(() => {
+                // Restore button state
+                button.innerHTML = originalText;
+                button.disabled = false;
+            });
+        } catch (error) {
+            console.error('Error in clearDatabaseHistory function:', error);
+            alert('Error: ' + error.message);
+            // Restore button state on error
+            const button = event.target.closest('button');
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    }
+}
+
+// Helper function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }
 </script>
 {% endblock %}
