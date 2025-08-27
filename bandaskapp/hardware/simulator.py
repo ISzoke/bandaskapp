@@ -322,9 +322,9 @@ class EVOKSimulator:
                     self.sensors[CONTROL_HHW_ID]['value'] = dhw_sensor['value']
                     self.sensors[CONTROL_HHW_ID]['time'] = dhw_sensor['time']
                 
-                # Update other enabled thermometers with calculated values (excluding control sensors)
+                # Update all enabled thermometers with calculated values (excluding control sensors)
                 for i, thermometer in enumerate(CONFIG['THERMOMETERS']):
-                    if (i > 0 and thermometer['id'] != 'NONE' and 
+                    if (thermometer['id'] != 'NONE' and 
                         thermometer['id'] in self.sensors and 
                         thermometer['id'] != CONTROL_DHW_ID and 
                         thermometer['id'] != CONTROL_HHW_ID):
@@ -335,6 +335,15 @@ class EVOKSimulator:
                         scale = max(0.2, 1.0 - 0.2 * i)  # Decrease scale for each sensor, min 0.2
                         self.sensors[thermometer['id']]['value'] = (dhw_sensor['value'] - offset) * scale
                         self.sensors[thermometer['id']]['time'] = dhw_sensor['time']
+                
+                # Special handling for DHW Top (first sensor) - give it a value close to control sensor
+                if (CONFIG['THERMOMETERS'][0]['id'] != 'NONE' and 
+                    CONFIG['THERMOMETERS'][0]['id'] in self.sensors and 
+                    CONFIG['THERMOMETERS'][0]['id'] != CONTROL_DHW_ID):
+                    # DHW Top should be close to the control sensor but slightly different
+                    dhw_top_offset = 2.0  # 2°C difference from control sensor
+                    self.sensors[CONFIG['THERMOMETERS'][0]['id']]['value'] = dhw_sensor['value'] - dhw_top_offset
+                    self.sensors[CONFIG['THERMOMETERS'][0]['id']]['time'] = dhw_sensor['time']
 
                 self.manual_temp_adjustment = 0.0
 

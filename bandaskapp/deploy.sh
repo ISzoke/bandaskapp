@@ -189,13 +189,39 @@ print_status "Hardware configuration verified"
 print_header "Step 7: Service Setup"
 echo "============================================================"
 
-# Create systemd service file (optional)
+# Create systemd service files (optional)
 if [ "$EUID" -eq 0 ] || sudo -n true 2>/dev/null; then
-    print_info "Creating systemd service file..."
+    print_info "Creating systemd service files..."
+    
+    # Create monitor service (runs first)
+    cat > /tmp/bandaskapp-monitor.service << EOF
+[Unit]
+Description=BandaskApp Monitor Service
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=$USER
+WorkingDirectory=$(pwd)
+Environment=PATH=$(pwd)/venv/bin
+ExecStart=$(pwd)/venv/bin/python manage.py monitor --interval 5
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    # Create web server service (depends on monitor)
     cat > /tmp/bandaskapp.service << EOF
 [Unit]
 Description=BandaskApp Heating Control System
-After=network.target
+After=network.target bandaskapp-monitor.service
+Requires=bandaskapp-monitor.service
+Wants=network.target
 
 [Service]
 Type=simple
@@ -205,14 +231,24 @@ Environment=PATH=$(pwd)/venv/bin
 ExecStart=$(pwd)/venv/bin/python manage.py runserver 0.0.0.0:8000
 Restart=always
 RestartSec=10
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
 EOF
-    print_status "Systemd service file created: /tmp/bandaskapp.service"
-    print_info "To install: sudo mv /tmp/bandaskapp.service /etc/systemd/system/ && sudo systemctl daemon-reload"
+
+    print_status "Systemd service files created:"
+    print_status "  - /tmp/bandaskapp-monitor.service (monitor service)"
+    print_status "  - /tmp/bandaskapp.service (web server service)"
+    print_info "To install:"
+    print_info "  sudo mv /tmp/bandaskapp-monitor.service /etc/systemd/system/"
+    print_info "  sudo mv /tmp/bandaskapp.service /etc/systemd/system/"
+    print_info "  sudo systemctl daemon-reload"
+    print_info "  sudo systemctl enable bandaskapp-monitor bandaskapp"
+    print_info "  sudo systemctl start bandaskapp-monitor bandaskapp"
 else
-    print_warning "Cannot create systemd service (need sudo privileges)"
+    print_warning "Cannot create systemd services (need sudo privileges)"
 fi
 
 print_header "Step 8: Deployment Complete!"
@@ -223,20 +259,26 @@ echo ""
 echo "Next steps:"
 echo ""
 echo "1. ${BLUE}Start the application:${NC}"
-echo "   ${YELLOW}Terminal 1 - Web Interface:${NC}"
-echo "     conda activate bandaskapp  # or: source venv/bin/activate"
-echo "     cd $(pwd)"
-echo "     python manage.py runserver 0.0.0.0:8000"
+echo "   ${YELLOW}Option A - Using systemd services (recommended for production):${NC}"
+echo "     sudo systemctl start bandaskapp-monitor"
+echo "     sudo systemctl start bandaskapp"
+echo "     sudo systemctl status bandaskapp-monitor bandaskapp"
 echo ""
-echo "   ${YELLOW}Terminal 2 - Monitoring Service:${NC}"
-echo "     conda activate bandaskapp  # or: source venv/bin/activate"
-echo "     cd $(pwd)"
-echo "     python manage.py monitor"
+echo "   ${YELLOW}Option B - Manual startup (for development/testing):${NC}"
+echo "     ${YELLOW}Terminal 1 - Web Interface:${NC}"
+echo "       conda activate bandaskapp  # or: source venv/bin/activate"
+echo "       cd $(pwd)"
+echo "       python manage.py runserver 0.0.0.0:8000"
 echo ""
-echo "   ${YELLOW}Terminal 3 - Hardware Simulator (if testing):${NC}"
-echo "     conda activate bandaskapp  # or: source venv/bin/activate"
-echo "     cd $(pwd)"
-echo "     python hardware/simulator.py"
+echo "     ${YELLOW}Terminal 2 - Monitoring Service:${NC}"
+echo "       conda activate bandaskapp  # or: source venv/bin/activate"
+echo "       cd $(pwd)"
+echo "       python manage.py monitor"
+echo ""
+echo "     ${YELLOW}Terminal 3 - Hardware Simulator (if testing):${NC}"
+echo "       conda activate bandaskapp  # or: source venv/bin/activate"
+echo "       cd $(pwd)"
+echo "       python hardware/simulator.py"
 echo ""
 echo "2. ${BLUE}Access the web interface:${NC}"
 echo "   http://localhost:8000"
@@ -244,13 +286,24 @@ echo ""
 echo "3. ${BLUE}Check system status:${NC}"
 echo "   python manage.py shell -c \"from core.models import SystemState; print(SystemState.load())\""
 echo ""
-echo "4. ${BLUE}View logs:${NC}"
+echo "4. ${BLUE}Manage systemd services:${NC}"
+echo "   ${YELLOW}Check service status:${NC}"
+echo "     sudo systemctl status bandaskapp-monitor bandaskapp"
+echo "   ${YELLOW}View service logs:${NC}"
+echo "     sudo journalctl -u bandaskapp-monitor -f"
+echo "     sudo journalctl -u bandaskapp -f"
+echo "   ${YELLOW}Restart services:${NC}"
+echo "     sudo systemctl restart bandaskapp-monitor bandaskapp"
+echo "   ${YELLOW}Stop services:${NC}"
+echo "     sudo systemctl stop bandaskapp bandaskapp-monitor"
+echo ""
+echo "5. ${BLUE}View logs:${NC}"
 echo "   python manage.py shell -c \"from core.models import SystemLog; [print(f'{l.timestamp}: {l.level} - {l.message}') for l in SystemLog.objects.order_by('-timestamp')[:10]]\""
 echo ""
-echo "5. ${BLUE}Restart hardware setup if needed:${NC}"
+echo "6. ${BLUE}Restart hardware setup if needed:${NC}"
 echo "   python manage.py setup_hardware"
 echo ""
-echo "6. ${BLUE}Reset database completely if needed:${NC}"
+echo "7. ${BLUE}Reset database completely if needed:${NC}"
 echo "   python manage.py reset_database --force"
 echo ""
 echo "============================================================"
