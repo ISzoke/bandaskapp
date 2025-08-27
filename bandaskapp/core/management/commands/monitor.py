@@ -109,46 +109,52 @@ class Command(BaseCommand):
     def _monitoring_cycle(self):
         """Execute one monitoring cycle"""
         
+        # Import configuration
+        from django.conf import settings
+        config = settings.BANDASKAPP_CONFIG
+        
         # Check API connectivity
         if not self.controller.check_api_connectivity():
             logger.warning("EVOK API connectivity issues detected")
             return
         
-        # Update temperature readings from enabled sensors only
-        temp1 = self.controller.update_temperature()
-        if temp1 is not None:
-            logger.info(f"DHW Top temperature: {temp1:.1f}°C")
-        else:
-            logger.debug("DHW Top temperature sensor is disabled or unavailable")
+        # Update all temperature sensors from hardware
+        update_results = self.controller.update_all_sensors()
         
-        temp2 = self.controller.update_temperature_2()
-        if temp2 is not None:
-            logger.info(f"DHW Middle temperature: {temp2:.1f}°C")
-        else:
-            logger.debug("DHW Middle temperature sensor is disabled or unavailable")
+        # Log the results
+        for i, thermometer in enumerate(config['THERMOMETERS']):
+            if thermometer['label'] == 'NONE':
+                continue  # Skip disabled sensors
+                
+            temp_key = f'temp_{i+1}'
+            if update_results.get(temp_key) is not None:
+                logger.info(f"{thermometer['label']} temperature: {update_results.get(temp_key):.1f}°C")
+            else:
+                logger.debug(f"{thermometer['label']} sensor is unavailable")
         
-        temp3 = self.controller.update_temperature_3()
-        if temp3 is not None:
-            logger.info(f"DHW Bottom temperature: {temp3:.1f}°C")
-        else:
-            logger.debug("DHW Bottom temperature sensor is disabled or unavailable")
+        # Get updated status after sensor updates
+        status = self.controller.get_system_status()
         
-        # Update HHW temperature from enabled sensor
-        hhw_temp = self.controller.update_temperature_hhw()
-        if hhw_temp is not None:
-            logger.info(f"HHW temperature: {hhw_temp:.1f}°C")
+        # Execute furnace control logic (using the configured control sensor)
+        control_sensor_id = config.get('CONTROL_DHW_ID')
+        if control_sensor_id and control_sensor_id != 'NONE':
+            # Find the control sensor in the thermometers list
+            control_sensor_temp = None
+            for i, thermometer in enumerate(config['THERMOMETERS']):
+                if thermometer['id'] == control_sensor_id:
+                    control_sensor_temp = status.get(f'temp_{i+1}')
+                    break
+            
+            if control_sensor_temp is not None:
+                control_action = self.controller.control_furnace()
+                if control_action:
+                    status = self.controller.get_system_status()
+                    furnace_state = "ON" if status.get('furnace_running') else "OFF"
+                    logger.info(f"Furnace control action: {furnace_state}")
+            else:
+                logger.debug(f"Skipping furnace control - Control sensor {control_sensor_id} is unavailable")
         else:
-            logger.debug("HHW temperature sensor is disabled or unavailable")
-        
-        # Execute furnace control logic (only if DHW 1 is enabled)
-        if temp1 is not None:
-            control_action = self.controller.control_furnace()
-            if control_action:
-                status = self.controller.get_system_status()
-                furnace_state = "ON" if status.get('furnace_running') else "OFF"
-                logger.info(f"Furnace control action: {furnace_state}")
-        else:
-            logger.debug("Skipping furnace control - DHW Top sensor is disabled")
+            logger.debug("Skipping furnace control - No control sensor configured")
         
         # Log system status periodically (every 10 cycles)
         if hasattr(self, '_cycle_count'):
@@ -159,14 +165,15 @@ class Command(BaseCommand):
         if self._cycle_count % 10 == 0:
             status = self.controller.get_system_status()
             enabled_sensors = []
-            if status.get('dhw_temperature') is not None:
-                enabled_sensors.append(f"DHW Top={status.get('dhw_temperature', 0):.1f}°C")
-            if status.get('dhw_temperature_2') is not None:
-                enabled_sensors.append(f"DHW Middle={status.get('dhw_temperature_2', 0):.1f}°C")
-            if status.get('dhw_temperature_3') is not None:
-                enabled_sensors.append(f"DHW Bottom={status.get('dhw_temperature_3', 0):.1f}°C")
-            if status.get('hhw_temperature') is not None:
-                enabled_sensors.append(f"HHW={status.get('hhw_temperature', 0):.1f}°C")
+            
+            # Build sensor status from generic temperature keys
+            for i, thermometer in enumerate(config['THERMOMETERS']):
+                if thermometer['label'] == 'NONE':
+                    continue
+                    
+                temp_key = f'temp_{i+1}'
+                if status.get(temp_key) is not None:
+                    enabled_sensors.append(f"{thermometer['label']}={status.get(temp_key, 0):.1f}°C")
             
             sensor_status = ", ".join(enabled_sensors) if enabled_sensors else "No enabled sensors"
             logger.info(f"System status: Mode={status.get('control_mode')}, "

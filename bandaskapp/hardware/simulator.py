@@ -48,7 +48,7 @@ class EVOKSimulator:
         for i, thermometer in enumerate(CONFIG['THERMOMETERS']):
             if thermometer['id'] != 'NONE':
                 # Generate address based on index for compatibility
-                address = f"28.95DCD5090000.{35 + i:02d}"
+                address = thermometer['id'] #f"28.95DCD5090000.{35 + i:02d}"
                 
                 self.sensors[thermometer['id']] = {
                     'dev': 'temp',
@@ -328,10 +328,12 @@ class EVOKSimulator:
                         thermometer['id'] in self.sensors and 
                         thermometer['id'] != CONTROL_DHW_ID and 
                         thermometer['id'] != CONTROL_HHW_ID):
-                        if i == 1:  # Second thermometer
-                            self.sensors[thermometer['id']]['value'] = (dhw_sensor['value'] - 10) * 0.8
-                        elif i == 2:  # Third thermometer
-                            self.sensors[thermometer['id']]['value'] = (dhw_sensor['value'] - 20) * 0.6
+                        # Generic simulation for any number of thermometers (excluding control sensors)
+                        # Simulate each thermometer as a function of the main (DHW) sensor, with decreasing value and amplitude
+                        # Example: Each subsequent sensor is further from the heat source
+                        offset = 5 * i  # 5°C offset per sensor index
+                        scale = max(0.2, 1.0 - 0.2 * i)  # Decrease scale for each sensor, min 0.2
+                        self.sensors[thermometer['id']]['value'] = (dhw_sensor['value'] - offset) * scale
                         self.sensors[thermometer['id']]['time'] = dhw_sensor['time']
 
                 self.manual_temp_adjustment = 0.0

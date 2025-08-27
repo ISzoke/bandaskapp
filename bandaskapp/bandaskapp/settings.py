@@ -129,38 +129,38 @@ BANDASKAPP_CONFIG = {
     # Thermometer Configuration - Array-based approach
     'THERMOMETERS': [
         {
-            'id': '2895DCD509000035',  # Circuit ID
+            'id': '28AA8C7F481401C8',  # Circuit ID
             'label': 'DHW Top',        # Display label (NONE = not shown)
             'color': '#ff6b6b'         # UI color
         },
         {
-            'id': '2895DCD509000036',
+            'id': '2896A9340A0000F1',
             'label': 'DHW Middle', 
             'color': '#ffa500'
         },
         {
-            'id': '2895DCD509000037',
-            'label': 'DHW Bottom',
+            'id': '28AA9A5948140151',
+            'label': 'HHW Top',
             'color': '#ffa500'
         },
         {
-            'id': '2895DCD509000038',
-            'label': 'NONE',           # Not shown in UI
+            'id': '28AA26EC47140170',
+            'label': 'HHW Bottom',
             'color': '#ff6b6b'
         },
         {
-            'id': '2895DCD509000039',
-            'label': 'NONE',           # Not shown in UI
+            'id': '28AAB01B481401F3',
+            'label': 'Furnace hot',           # Not shown in UI
             'color': '#ff6b6b'
         },
         {
-            'id': '2895DCD509000040',
-            'label': 'NONE',           # Not shown in UI
+            'id': '28EBDE49F6AF3CF7',
+            'label': 'Heating radiator',           # Not shown in UI
             'color': '#ff6b6b'
         },
         {
-            'id': '2895DCD509000041',
-            'label': 'NONE',           # Not shown in UI
+            'id': '28AA7EE147140146',
+            'label': 'Heating floor',           # Not shown in UI
             'color': '#ff6b6b'
         }
     ],
@@ -189,6 +189,6 @@ BANDASKAPP_CONFIG = {
     },
     
     # Control Circuit Configuration
-    'CONTROL_DHW_ID': '2895DCD509000035',  # Control temperature sensor for DHW (same as THERMOMETER_DHW_1_ID)
-    'CONTROL_HHW_ID': '2895DCD509000035',  # Control temperature sensor for HHW (same as THERMOMETER_HHW_1_ID)
+    'CONTROL_DHW_ID': '2896A9340A0000F1',  # Control temperature sensor for DHW (same as THERMOMETER_DHW_1_ID)
+    'CONTROL_HHW_ID': '2896A9340A0000F1',  # Control temperature sensor for HHW (same as THERMOMETER_HHW_1_ID)
 }

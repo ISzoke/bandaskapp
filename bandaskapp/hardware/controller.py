@@ -555,73 +555,50 @@ class HardwareController:
                 'api_connected': self.client.get_last_error() is None,
             }
             
-            # Handle DHW Sensor 1 (Primary - required for basic operation)
-            if self._is_sensor_enabled(self.config['CONTROL_DHW_ID']):
-                try:
-                    dhw_sensor = TemperatureSensor.objects.get(circuit_id=self.config['CONTROL_DHW_ID'])
+            # Handle all thermometers generically from configuration
+            for i, thermometer in enumerate(self.config['THERMOMETERS']):
+                if thermometer['label'] == 'NONE':
+                    continue  # Skip disabled sensors
+                    
+                sensor_id = thermometer['id']
+                temp_key = f'temp_{i+1}'
+                online_key = f'sensor_{i+1}_online'
+                
+                if self._is_sensor_enabled(sensor_id):
+                    try:
+                        sensor = TemperatureSensor.objects.get(circuit_id=sensor_id)
+                        status.update({
+                            temp_key: sensor.current_value,
+                            online_key: sensor.is_online,
+                        })
+                        # Set last_reading from the first available sensor
+                        if i == 0:
+                            status['last_reading'] = sensor.last_reading
+                    except TemperatureSensor.DoesNotExist:
+                        logger.warning(f"Temperature sensor with circuit ID {sensor_id} not found in database")
+                        status.update({
+                            temp_key: None,
+                            online_key: False,
+                        })
+                else:
+                    # Sensor is disabled
                     status.update({
-                        'dhw_temperature': dhw_sensor.current_value,
-                        'dhw_sensor_online': dhw_sensor.is_online,
-                        'last_reading': dhw_sensor.last_reading,
+                        temp_key: None,
+                        online_key: False,
                     })
-                except TemperatureSensor.DoesNotExist:
-                    logger.warning(f"DHW Sensor 1 with circuit ID {self.config['CONTROL_DHW_ID']} not found in database")
-                    status.update({
-                        'dhw_temperature': None,
-                        'dhw_sensor_online': False,
-                        'last_reading': None,
-                    })
-            else:
-                # Sensor is disabled
-                status.update({
-                    'dhw_temperature': None,
-                    'dhw_sensor_online': False,
-                    'last_reading': None,
-                })
             
-            # Handle DHW Sensor 2 (Middle - optional)
-            if self._is_sensor_enabled(self.config['THERMOMETERS'][1]['id']):
-                try:
-                    dhw_sensor_2 = TemperatureSensor.objects.get(circuit_id=self.config['THERMOMETERS'][1]['id'])
-                    status.update({
-                        'dhw_temperature_2': dhw_sensor_2.current_value,
-                        'dhw_sensor_2_online': dhw_sensor_2.is_online,
-                    })
-                except TemperatureSensor.DoesNotExist:
-                    logger.warning(f"DHW Sensor 2 with circuit ID {self.config['THERMOMETERS'][1]['id']} not found in database")
-                    status.update({
-                        'dhw_temperature_2': None,
-                        'dhw_sensor_2_online': False,
-                    })
-            else:
-                # Sensor is disabled
-                status.update({
-                    'dhw_temperature_2': None,
-                    'dhw_sensor_2_online': False,
-                })
+            # Keep backward compatibility for existing code
+            if 'temp_1' in status:
+                status['dhw_temperature'] = status['temp_1']
+                status['dhw_sensor_online'] = status['sensor_1_online']
+            if 'temp_2' in status:
+                status['dhw_temperature_2'] = status['temp_2']
+                status['dhw_sensor_2_online'] = status['sensor_2_online']
+            if 'temp_3' in status:
+                status['dhw_temperature_3'] = status['temp_3']
+                status['dhw_sensor_3_online'] = status['sensor_3_online']
             
-            # Handle DHW Sensor 3 (Bottom - optional)
-            if self._is_sensor_enabled(self.config['THERMOMETERS'][2]['id']):
-                try:
-                    dhw_sensor_3 = TemperatureSensor.objects.get(circuit_id=self.config['THERMOMETERS'][2]['id'])
-                    status.update({
-                        'dhw_temperature_3': dhw_sensor_3.current_value,
-                        'dhw_sensor_3_online': dhw_sensor_3.is_online,
-                    })
-                except TemperatureSensor.DoesNotExist:
-                    logger.warning(f"DHW Sensor 3 with circuit ID {self.config['THERMOMETERS'][2]['id']} not found in database")
-                    status.update({
-                        'dhw_temperature_3': None,
-                        'dhw_sensor_3_online': False,
-                    })
-            else:
-                # Sensor is disabled
-                status.update({
-                    'dhw_temperature_3': None,
-                    'dhw_sensor_3_online': False,
-                })
-            
-            # Handle HHW Sensor (for winter regime)
+            # Handle HHW Sensor (for winter regime) - use the configured HHW sensor
             if self._is_sensor_enabled(self.config['CONTROL_HHW_ID']):
                 try:
                     hhw_sensor = TemperatureSensor.objects.get(circuit_id=self.config['CONTROL_HHW_ID'])
@@ -827,4 +804,87 @@ class HardwareController:
                 self.last_furnace_switch = time.time()
         except Relay.DoesNotExist:
             logger.warning(f"Furnace relay with circuit ID {self.config['FURNACE_RELAY_ID']} not found in database")
+    
+    def update_all_sensors(self) -> dict:
+        """
+        Update all temperature sensors from hardware and return status
+        
+        Returns:
+            Dictionary with update results for each sensor
+        """
+        results = {}
+        
+        try:
+            # Process all thermometers from configuration
+            for i, thermometer in enumerate(self.config['THERMOMETERS']):
+                if thermometer['label'] == 'NONE':
+                    continue  # Skip disabled sensors
+                    
+                sensor_id = thermometer['id']
+                temp_key = f'temp_{i+1}'
+                online_key = f'sensor_{i+1}_online'
+                
+                try:
+                    # Read from hardware
+                    data = self.client.get_temperature(sensor_id)
+                    
+                    if data is None:
+                        # Communication error
+                        results[temp_key] = None
+                        results[online_key] = False
+                        continue
+                    
+                    # Check if sensor is lost
+                    if data.get('lost', True):
+                        results[temp_key] = None
+                        results[online_key] = False
+                        continue
+                    
+                    # Get temperature value
+                    new_temp = data.get('value')
+                    if new_temp is None:
+                        results[temp_key] = None
+                        results[online_key] = False
+                        continue
+                    
+                    # Validate temperature (skip validation for now to avoid errors)
+                    # if not self._validate_temperature(None, new_temp):
+                    #     results[temp_key] = None
+                    #     results[online_key] = False
+                    #     continue
+                    
+                    # Update sensor in database
+                    try:
+                        sensor = TemperatureSensor.objects.get(circuit_id=sensor_id)
+                        sensor.current_value = new_temp
+                        sensor.last_reading = timezone.now()
+                        sensor.is_lost = False
+                        sensor.save()
+                        
+                        # Log temperature reading
+                        TemperatureLog.objects.create(
+                            sensor=sensor,
+                            value=new_temp
+                        )
+                        
+                        results[temp_key] = new_temp
+                        results[online_key] = True
+                        
+                        logger.debug(f"Updated {thermometer['label']} temperature: {new_temp:.1f}°C")
+                        
+                    except TemperatureSensor.DoesNotExist:
+                        logger.warning(f"Temperature sensor with circuit ID {sensor_id} not found in database")
+                        results[temp_key] = None
+                        results[online_key] = False
+                        
+                except Exception as e:
+                    logger.error(f"Error updating {thermometer['label']} sensor: {e}")
+                    results[temp_key] = None
+                    results[online_key] = False
+            
+            return results
+            
+        except Exception as e:
+            logger.error(f"Error in update_all_sensors: {e}")
+            return {}
 

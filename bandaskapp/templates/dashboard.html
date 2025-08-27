@@ -7,7 +7,7 @@
         <div class="heat-tank">
             
             <!-- Check if any sensors are enabled -->
-            {% if not dhw_sensor_1_enabled and not dhw_sensor_2_enabled and not dhw_sensor_3_enabled %}
+            {% if not thermometers %}
             <div class="temperature-field" style="text-align: center; padding: 40px;">
                 <h4 style="color: #ff4444;">No Temperature Sensors Enabled</h4>
                 <p style="color: #cccccc;">All temperature sensors are currently disabled in the configuration.</p>
@@ -31,26 +31,10 @@
                     <div class="col-4">
                         <h5 style="color: {{ thermometer.color }}; font-size: 1rem; margin-bottom: 5px;">{{ thermometer.label }}</h5>
                         <div class="temperature-display">
-                            {% if forloop.counter == 1 %}
-                                <span id="temp-{{ forloop.counter0 }}">{{ dhw_temp|floatformat:1 }}</span>°C
-                            {% elif forloop.counter == 2 %}
-                                <span id="temp-{{ forloop.counter0 }}">{{ dhw_temp_2|floatformat:1 }}</span>°C
-                            {% elif forloop.counter == 3 %}
-                                <span id="temp-{{ forloop.counter0 }}">{{ dhw_temp_3|floatformat:1 }}</span>°C
-                            {% else %}
-                                <span id="temp-{{ forloop.counter0 }}">{{ dhw_temp|floatformat:1|add:"-15" }}</span>°C
-                            {% endif %}
+                            <span id="temp-{{ forloop.counter0 }}">{{ thermometer.temp_key|default:0|floatformat:1 }}</span>°C
                         </div>
                         <small class="text-muted" style="font-size: 0.8rem;">Sensor: 
-                            {% if forloop.counter == 1 %}
-                                <span id="sensor-status-{{ forloop.counter0 }}" class="{% if dhw_sensor_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_online %}Online{% else %}Offline{% endif %}</span>
-                            {% elif forloop.counter == 2 %}
-                                <span id="sensor-status-{{ forloop.counter0 }}" class="{% if dhw_sensor_2_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_2_online %}Online{% else %}Offline{% endif %}</span>
-                            {% elif forloop.counter == 3 %}
-                                <span id="sensor-status-{{ forloop.counter0 }}" class="{% if dhw_sensor_3_online %}status-on{% else %}sensor-offline{% endif %}">{% if dhw_sensor_3_online %}Online{% else %}Offline{% endif %}</span>
-                            {% else %}
-                                <span class="status-on">Online</span>
-                            {% endif %}
+                            <span id="sensor-status-{{ forloop.counter0 }}" class="{% if thermometer.online_key %}status-on{% else %}sensor-offline{% endif %}">{% if thermometer.online_key %}Online{% else %}Offline{% endif %}</span>
                         </small>
                     </div>
                 </div>
@@ -73,9 +57,11 @@
                     </button>
                 </div>
                 <div class="col-6 mb-1">
-                    <button id="furnace-toggle-btn" class="btn {% if furnace_running %}btn-success{% else %}btn-danger{% endif %} btn-control-furnace w-100" onclick="toggleFurnace()">
-                        <strong id="furnace-toggle-text" style="font-size: 0.9rem;">Furnace {% if furnace_running %}ON{% else %}OFF{% endif %}</strong>
-                        <div class="timer-display furnace-timer-inline" id="furnace-timer">00:00</div>
+                    <button id="furnace-toggle-btn" class="btn {% if furnace_running %}btn-success{% else %}btn-danger{% endif %} btn-control-furnace w-100 btn-timer-container" onclick="toggleFurnace()">
+                        <div class="btn-text">
+                            <strong id="furnace-toggle-text" style="font-size: 0.9rem;">Furnace {% if furnace_running %}ON{% else %}OFF{% endif %}</strong>
+                        </div>
+                        <div class="timer-display btn-timer-right" id="furnace-timer">00:00</div>
                     </button>
                 </div>
                 <div class="col-6 mb-1">
@@ -84,9 +70,11 @@
                     </button>
                 </div>
                 <div class="col-6 mb-1">
-                    <button id="pump-toggle-btn" class="btn btn-danger btn-control-pump w-100" onclick="togglePump()">
-                        <strong id="pump-toggle-text" style="font-size: 0.9rem;">Pump {% if pump_running %}ON{% else %}OFF{% endif %}</strong>
-                        <div class="timer-display pump-timer-inline" id="pump-timer">00:00</div>
+                    <button id="pump-toggle-btn" class="btn btn-danger btn-control-pump w-100 btn-timer-container" onclick="togglePump()">
+                        <div class="btn-text">
+                            <strong id="pump-toggle-text" style="font-size: 0.9rem;">Pump {% if pump_running %}ON{% else %}OFF{% endif %}</strong>
+                        </div>
+                        <div class="timer-display btn-timer-right" id="pump-timer">00:00</div>
                     </button>
                 </div>
             </div>
@@ -1383,10 +1371,10 @@
                     
                     // Update button state
                     if (isCurrentlyRunning) {
-                        furnaceBtn.className = 'btn btn-danger btn-control-furnace w-100';
+                        furnaceBtn.className = 'btn btn-danger btn-control-furnace w-100 btn-timer-container';
                         furnaceText.textContent = 'Furnace OFF';
                     } else {
-                        furnaceBtn.className = 'btn btn-success btn-control-furnace w-100';
+                        furnaceBtn.className = 'btn btn-success btn-control-furnace w-100 btn-timer-container';
                         furnaceText.textContent = 'Furnace ON';
                     }
                 }
@@ -1424,10 +1412,10 @@
                     
                     // Update button state
                     if (isCurrentlyRunning) {
-                        pumpBtn.className = 'btn btn-danger btn-control-pump w-100';
+                        pumpBtn.className = 'btn btn-danger btn-control-pump w-100 btn-timer-container';
                         pumpText.textContent = 'Pump OFF';
                     } else {
-                        pumpBtn.className = 'btn btn-success btn-control-pump w-100';
+                        pumpBtn.className = 'btn btn-success btn-control-pump w-100 btn-timer-container';
                         pumpText.textContent = 'Pump ON';
                     }
                 }

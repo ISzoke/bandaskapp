@@ -30,23 +30,25 @@ def dashboard(request):
         # Get system state for winter regime and thresholds
         system_state = SystemState.load()
         
-        # Process thermometer configuration
+        # Process thermometer configuration generically
         thermometers = []
         for i, thermometer in enumerate(config['THERMOMETERS']):
+            # Skip sensors labeled as 'NONE' (not shown in UI)
+            if thermometer['label'] == 'NONE':
+                continue
+                
             thermometers.append({
                 'index': i,
                 'id': thermometer['id'],
                 'label': thermometer['label'],
                 'color': thermometer['color'],
-                'enabled': thermometer['id'] != 'NONE',
-                'temp_key': f'dhw_temp_{i+1}' if i < 3 else f'dhw_temp_{i+1}',
-                'online_key': f'dhw_sensor_{i+1}_online' if i < 3 else f'dhw_sensor_{i+1}_online'
+                'enabled': True,  # All non-NONE sensors are enabled
+                'temp_key': f'temp_{i+1}',
+                'online_key': f'sensor_{i+1}_online'
             })
         
+        # Build dynamic context based on configuration
         context = {
-            'dhw_temp': status.get('dhw_temperature', 0),
-            'dhw_temp_2': status.get('dhw_temperature_2', 0),  # DHW middle
-            'dhw_temp_3': status.get('dhw_temperature_3', 0),  # DHW bottom
             'dhw_temp_low': status.get('dhw_temp_thresholds', {}).get('low', 45),
             'dhw_temp_high': status.get('dhw_temp_thresholds', {}).get('high', 60),
             'hhw_temp_low': system_state.hhw_temp_low,
@@ -56,40 +58,39 @@ def dashboard(request):
             'control_mode': status.get('control_mode', 'automatic'),
             'winter_regime_state': system_state.winter_regime_state,
             'heating_controller_state': status.get('heating_controller_state'),
-            'dhw_sensor_online': status.get('dhw_sensor_online', False),
-            'dhw_sensor_2_online': status.get('dhw_sensor_2_online', False),
-            'dhw_sensor_3_online': status.get('dhw_sensor_3_online', False),
             'api_connected': status.get('api_connected', False),
             'last_reading': status.get('last_reading'),
             'recent_logs': recent_logs,
             'error': status.get('error'),
-            # Add thermometer configuration
+            
+            # Generic thermometer configuration
             'thermometers': thermometers,
-            # Add sensor enabled status
-            'dhw_sensor_1_enabled': config['CONTROL_DHW_ID'] != 'NONE',
-            'dhw_sensor_2_enabled': config['THERMOMETERS'][1]['id'] != 'NONE',
-            'dhw_sensor_3_enabled': config['THERMOMETERS'][2]['id'] != 'NONE',
-            # Add hardware circuit IDs for the hardware values card
-            'furnace_relay_id': config['FURNACE_RELAY_ID'],
-            'pump_relay_id': config['PUMP_RELAY_ID'],
-            'heating_control_unit_id': config['HEATING_CONTROL_UNIT_ID'],
-            'control_dhw_id': config['CONTROL_DHW_ID'],
-            'control_hhw_id': config['CONTROL_HHW_ID'],
+            
+            # Hardware circuit IDs for the hardware values card
+            'furnace_relay_id': config.get('FURNACE_RELAY_ID', ''),
+            'pump_relay_id': config.get('PUMP_RELAY_ID', ''),
+            'heating_control_unit_id': config.get('HEATING_CONTROL_UNIT_ID', ''),
+            'control_dhw_id': config.get('CONTROL_DHW_ID', ''),
+            'control_hhw_id': config.get('CONTROL_HHW_ID', ''),
         }
+        
+        # Add dynamic temperature and sensor status for each thermometer
+        for i, thermometer in enumerate(thermometers):
+            temp_key = thermometer['temp_key']
+            online_key = thermometer['online_key']
+            
+            # Get temperature from status (fallback to 0 if not available)
+            context[temp_key] = status.get(temp_key, 0)
+            context[online_key] = status.get(online_key, False)
         
         return render(request, 'dashboard.html', context)
         
     except Exception as e:
         return render(request, 'dashboard.html', {
             'error': f'System error: {e}',
-            'dhw_temp': 0,
-            'dhw_temp_2': 0,
-            'dhw_temp_3': 0,
+            'thermometers': [],
             'furnace_running': False,
             'control_mode': 'unknown',
-            'dhw_sensor_1_enabled': True,
-            'dhw_sensor_2_enabled': True,
-            'dhw_sensor_3_enabled': True,
         })
 
 def api_status(request):
@@ -104,11 +105,8 @@ def api_status(request):
         # Get system state for winter regime and thresholds
         system_state = SystemState.load()
         
-        # Format response
+        # Format response with generic temperature keys
         response_data = {
-            'dhw_temp': status.get('dhw_temperature', 0),
-            'dhw_temp_2': status.get('dhw_temperature_2', 0),  # DHW middle
-            'dhw_temp_3': status.get('dhw_temperature_3', 0),  # DHW bottom
             'dhw_temp_low': status.get('dhw_temp_thresholds', {}).get('low', 45),
             'dhw_temp_high': status.get('dhw_temp_thresholds', {}).get('high', 60),
             'hhw_temp_low': system_state.hhw_temp_low,
@@ -118,17 +116,32 @@ def api_status(request):
             'control_mode': status.get('control_mode', 'automatic'),
             'winter_regime_state': system_state.winter_regime_state,
             'heating_controller_state': status.get('heating_controller_state'),
-            'dhw_sensor_online': status.get('dhw_sensor_online', False),
-            'dhw_sensor_2_online': status.get('dhw_sensor_2_online', False),
-            'dhw_sensor_3_online': status.get('dhw_sensor_3_online', False),
             'api_connected': status.get('api_connected', False),
             'timestamp': timezone.now().isoformat(),
             'success': True,
-            # Add sensor enabled status
-            'dhw_sensor_1_enabled': config['CONTROL_DHW_ID'] != 'NONE',
-            'dhw_sensor_2_enabled': config['THERMOMETERS'][1]['id'] != 'NONE',
-            'dhw_sensor_3_enabled': config['THERMOMETERS'][2]['id'] != 'NONE',
         }
+        
+        # Add all temperature data generically
+        for i, thermometer in enumerate(config['THERMOMETERS']):
+            if thermometer['label'] == 'NONE':
+                continue
+                
+            temp_key = f'temp_{i+1}'
+            online_key = f'sensor_{i+1}_online'
+            
+            response_data[temp_key] = status.get(temp_key, 0)
+            response_data[online_key] = status.get(online_key, False)
+        
+        # Keep backward compatibility for existing code
+        if 'temp_1' in response_data:
+            response_data['dhw_temp'] = response_data['temp_1']
+            response_data['dhw_sensor_online'] = response_data['sensor_1_online']
+        if 'temp_2' in response_data:
+            response_data['dhw_temp_2'] = response_data['temp_2']
+            response_data['dhw_sensor_2_online'] = response_data['sensor_2_online']
+        if 'temp_3' in response_data:
+            response_data['dhw_temp_3'] = response_data['temp_3']
+            response_data['dhw_sensor_3_online'] = response_data['sensor_3_online']
         
         if status.get('last_reading'):
             response_data['last_reading'] = status['last_reading'].isoformat()
