@@ -313,6 +313,107 @@ sudo ufw allow 22/tcp     # SSH
 sudo ufw enable
 ```
 
+## 🚀 Production Deployment with Systemd Services
+
+For production deployments, it's recommended to use systemd services for automatic startup, restart, and monitoring.
+
+### Systemd Service Setup
+
+The deployment script automatically creates systemd service files. You can also create them manually:
+
+#### 1. Monitor Service (bandaskapp-monitor.service)
+
+This service runs the monitoring daemon that updates sensor data:
+
+```bash
+# Create monitor service file
+sudo tee /etc/systemd/system/bandaskapp-monitor.service > /dev/null << 'EOF'
+[Unit]
+Description=BandaskApp Monitor Service
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=YOUR_USERNAME
+WorkingDirectory=/path/to/your/bandaskapp
+Environment=PATH=/path/to/your/bandaskapp/venv/bin
+ExecStart=/path/to/your/bandaskapp/venv/bin/python manage.py monitor --interval 5
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+```
+
+#### 2. Web Server Service (bandaskapp.service)
+
+This service runs the Django web interface and depends on the monitor service:
+
+```bash
+# Create web server service file
+sudo tee /etc/systemd/system/bandaskapp.service > /dev/null << 'EOF'
+[Unit]
+Description=BandaskApp Heating Control System
+After=network.target bandaskapp-monitor.service
+Requires=bandaskapp-monitor.service
+Wants=network.target
+
+[Service]
+Type=simple
+User=YOUR_USERNAME
+WorkingDirectory=/path/to/your/bandaskapp
+Environment=PATH=/path/to/your/bandaskapp/venv/bin
+ExecStart=/path/to/your/bandaskapp/venv/bin/python manage.py runserver 0.0.0.0:8000
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+```
+
+**Important:** Replace `YOUR_USERNAME` and `/path/to/your/bandaskapp` with actual values.
+
+### Service Management
+
+```bash
+# Enable and start services
+sudo systemctl daemon-reload
+sudo systemctl enable bandaskapp-monitor
+sudo systemctl enable bandaskapp
+sudo systemctl start bandaskapp-monitor
+sudo systemctl start bandaskapp
+
+# Check service status
+sudo systemctl status bandaskapp-monitor
+sudo systemctl status bandaskapp
+
+# View service logs
+sudo journalctl -u bandaskapp-monitor -f
+sudo journalctl -u bandaskapp -f
+
+# Restart services
+sudo systemctl restart bandaskapp-monitor bandaskapp
+
+# Stop services
+sudo systemctl stop bandaskapp bandaskapp-monitor
+```
+
+### Why Systemd Services?
+
+- **Automatic startup** on system boot
+- **Automatic restart** if services crash
+- **Dependency management** (web server starts after monitor)
+- **Centralized logging** through journalctl
+- **Easy monitoring** and management
+- **Production-ready** deployment
+
 ## 📚 Additional Resources
 
 ### Useful Commands
@@ -363,6 +464,8 @@ If you encounter issues:
 - [ ] Web interface accessible
 - [ ] Monitoring service running
 - [ ] Hardware communication working
+- [ ] Systemd services configured (production)
+- [ ] Services auto-start on boot
 
 ---
 

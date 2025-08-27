@@ -642,6 +642,54 @@
     
     <!-- Custom JavaScript -->
     <script>
+        // ===== BASE LOGGING SYSTEM =====
+        // Configure logging level: 'debug', 'info', 'warn', 'error', or 'none'
+        const BASE_LOG_LEVEL = 'none'; // Change to 'debug' for development, 'none' for production
+        
+        const BASE_LOG_LEVELS = {
+            'none': 0,
+            'error': 1,
+            'warn': 2,
+            'info': 3,
+            'debug': 4
+        };
+        
+        const baseCurrentLogLevel = BASE_LOG_LEVELS[BASE_LOG_LEVEL] || BASE_LOG_LEVELS['info'];
+        
+        function baseLog(level, message, ...args) {
+            const levelNum = BASE_LOG_LEVELS[level] || 0;
+            if (levelNum <= baseCurrentLogLevel && levelNum > 0) {
+                const timestamp = new Date().toLocaleTimeString('en-GB', { hour12: false });
+                const prefix = `[${timestamp}] [BASE-${level.toUpperCase()}]`;
+                
+                switch(level) {
+                    case 'error':
+                        console.error(prefix, message, ...args);
+                        break;
+                    case 'warn':
+                        console.warn(prefix, message, ...args);
+                        break;
+                    case 'info':
+                        console.info(prefix, message, ...args);
+                        break;
+                    case 'debug':
+                        console.log(prefix, message, ...args);
+                        break;
+                }
+            }
+        }
+        
+        // Convenience functions
+        function debug(message, ...args) { baseLog('debug', message, ...args); }
+        function info(message, ...args) { baseLog('info', message, ...args); }
+        function warn(message, ...args) { baseLog('warn', message, ...args); }
+        function error(message, ...args) { baseLog('error', message, ...args); }
+        
+        // Log system initialization
+        info('BandaskApp base logging system initialized with level:', BASE_LOG_LEVEL);
+        
+        // ===== END BASE LOGGING SYSTEM =====
+        
         // Global storage for mini-graph data to persist across tab switches
         let miniGraphData = {};
         
@@ -662,9 +710,9 @@
                     }
                 }
                 sessionStorage.setItem('bandaskapp_miniGraphData', JSON.stringify(dataToSave));
-                console.log('Saved mini-graph data to sessionStorage:', Object.keys(dataToSave), 'at', new Date().toLocaleTimeString('en-GB', { hour12: false }));
+                baseLog('info', 'Saved mini-graph data to sessionStorage:', Object.keys(dataToSave), 'at', new Date().toLocaleTimeString('en-GB', { hour12: false }));
             } catch (error) {
-                console.error('Error saving mini-graph data:', error);
+                baseLog('error', 'Error saving mini-graph data:', error);
             }
         }
         
@@ -673,15 +721,15 @@
                 const savedData = sessionStorage.getItem('bandaskapp_miniGraphData');
                 if (savedData) {
                     const parsedData = JSON.parse(savedData);
-                    console.log('Loaded mini-graph data from sessionStorage:', Object.keys(parsedData), 'at', new Date().toLocaleTimeString('en-GB', { hour12: false }));
+                    baseLog('info', 'Loaded mini-graph data from sessionStorage:', Object.keys(parsedData), 'at', new Date().toLocaleTimeString('en-GB', { hour12: false }));
                     
                     // Store the loaded data for later use when mini-graphs are created
                     window.loadedMiniGraphData = parsedData;
                 } else {
-                    console.log('No mini-graph data found in sessionStorage');
+                    baseLog('info', 'No mini-graph data found in sessionStorage');
                 }
             } catch (error) {
-                console.error('Error loading mini-graph data:', error);
+                baseLog('error', 'Error loading mini-graph data:', error);
             }
         }
         
@@ -694,7 +742,7 @@
         
         // Tab switching functionality - simple approach that preserves mini-graph data
         function showTab(tabName) {
-            console.log(`Switching to tab: ${tabName} - mini-graphs will continue running in background`);
+            baseLog('info', `Switching to tab: ${tabName} - mini-graphs will continue running in background`);
             
             // Save current mini-graph data before navigation
             saveMiniGraphData();
@@ -714,16 +762,16 @@
         
         // Persistent polling function - ALWAYS runs regardless of tab state
         function startPersistentPolling() {
-            console.log('Starting PERSISTENT polling for mini-graphs (never stops)');
+            baseLog('info', 'Starting PERSISTENT polling for mini-graphs (never stops)');
             
             // This interval runs continuously, regardless of tab visibility
             persistentPollingInterval = setInterval(function() {
-                console.log('PERSISTENT polling: calling updateStatus() - tab visible:', document.visibilityState, 'time:', new Date().toLocaleTimeString('en-GB', { hour12: false }));
+                baseLog('info', 'PERSISTENT polling: calling updateStatus() - tab visible:', document.visibilityState, 'time:', new Date().toLocaleTimeString('en-GB', { hour12: false }));
                 updateStatus();
                 
                 // Debug: Log the state of miniGraphData every 30 seconds
                 if (persistentPollingInterval && updateStatusCallCount % 6 === 0) { // Every 30 seconds (6 * 5s)
-                    console.log('DEBUG: miniGraphData state:', {
+                    baseLog('debug', 'DEBUG: miniGraphData state:', {
                         keys: Object.keys(miniGraphData),
                         thermometer0: miniGraphData['thermometer-0'] ? 'exists' : 'missing',
                         thermometer1: miniGraphData['thermometer-1'] ? 'exists' : 'missing',
@@ -737,7 +785,7 @@
         
         // Cleanup on page unload
         window.addEventListener('beforeunload', function() {
-            console.log('Page unloading - cleaning up intervals');
+            baseLog('info', 'Page unloading - cleaning up intervals');
             
             if (persistentPollingInterval) {
                 clearInterval(persistentPollingInterval);
@@ -759,19 +807,19 @@
             // Start PERSISTENT polling that never stops
             startPersistentPolling();
             
-            console.log('Mini-graph AJAX polling initialized with PERSISTENT polling');
+            baseLog('info', 'Mini-graph AJAX polling initialized with PERSISTENT polling');
         });
         
         // Auto-refresh status every 10 seconds
         function updateStatus() {
             updateStatusCallCount++;
-            console.log(`updateStatus() called #${updateStatusCallCount} - tab visible:`, document.visibilityState, 'time:', new Date().toLocaleTimeString('en-GB', { hour12: false }));
+            baseLog('info', `updateStatus() called #${updateStatusCallCount} - tab visible:`, document.visibilityState, 'time:', new Date().toLocaleTimeString('en-GB', { hour12: false }));
             
             // Debug: Check if temperature elements exist
             const temp0Element = document.getElementById('temp-0');
             const temp1Element = document.getElementById('temp-1');
             const temp2Element = document.getElementById('temp-2');
-            console.log('Temperature elements found:', {
+            baseLog('debug', 'Temperature elements found:', {
                 'temp-0': temp0Element ? 'exists' : 'missing',
                 'temp-1': temp1Element ? 'exists' : 'missing',
                 'temp-2': temp2Element ? 'exists' : 'missing'
@@ -780,9 +828,9 @@
             fetch('/api/status/')
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Status update received:', data); // Debug log
+                    baseLog('info', 'Status update received:', data); // Debug log
                     if (data.success) {
-                        console.log('Updating temperature displays...'); // Debug log
+                        baseLog('info', 'Updating temperature displays...'); // Debug log
                         
                         // Update all temperature displays generically
                         for (let i = 1; i <= 7; i++) {
@@ -792,7 +840,7 @@
                             
                             if (data[tempKey] !== undefined && tempElement) {
                                 tempElement.textContent = data[tempKey].toFixed(1);
-                                console.log(`Updated temp-${i-1} to:`, data[tempKey].toFixed(1));
+                                baseLog('debug', `Updated temp-${i-1} to:`, data[tempKey].toFixed(1));
                             }
                         }
                         
@@ -814,29 +862,29 @@
                         
                         // Update mini graphs if they exist in global storage
                         if (typeof miniGraphData !== 'undefined' && Object.keys(miniGraphData).length > 0) {
-                            console.log('Status update: Updating mini graphs with real sensor data, miniGraphData keys:', Object.keys(miniGraphData));
+                                                    baseLog('info', 'Status update: Updating mini graphs with real sensor data, miniGraphData keys:', Object.keys(miniGraphData));
+                        
+                        let graphsUpdated = false;
+                        
+                        // Update all mini graphs generically
+                        for (let i = 1; i <= 7; i++) {
+                            const tempKey = `temp_${i}`;
+                            const graphKey = `thermometer-${i-1}`;
                             
-                            let graphsUpdated = false;
-                            
-                            // Update all mini graphs generically
-                            for (let i = 1; i <= 7; i++) {
-                                const tempKey = `temp_${i}`;
-                                const graphKey = `thermometer-${i-1}`;
-                                
-                                if (data[tempKey] !== undefined && miniGraphData[graphKey] && miniGraphData[graphKey].updateData) {
-                                    console.log(`Updating ${graphKey} mini-graph with:`, data[tempKey]);
-                                    miniGraphData[graphKey].updateData(data[tempKey]);
-                                    graphsUpdated = true;
-                                }
+                            if (data[tempKey] !== undefined && miniGraphData[graphKey] && miniGraphData[graphKey].updateData) {
+                                baseLog('debug', `Updating ${graphKey} mini-graph with:`, data[tempKey]);
+                                miniGraphData[graphKey].updateData(data[tempKey]);
+                                graphsUpdated = true;
                             }
-                            
-                            // Save updated data to localStorage only if graphs were actually updated
-                            if (graphsUpdated) {
-                                saveMiniGraphData();
-                            }
-                        } else {
-                            console.log('miniGraphData is undefined, empty, or mini-graphs not ready yet');
                         }
+                        
+                        // Save updated data to localStorage only if graphs were actually updated
+                        if (graphsUpdated) {
+                            saveMiniGraphData();
+                        }
+                    } else {
+                        baseLog('info', 'miniGraphData is undefined, empty, or mini-graphs not ready yet');
+                    }
                         
                         // Update furnace status
                         const furnaceElement = document.getElementById('furnace-status');
@@ -942,7 +990,7 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Error updating status:', error);
+                    baseLog('error', 'Error updating status:', error);
                 });
         }
         

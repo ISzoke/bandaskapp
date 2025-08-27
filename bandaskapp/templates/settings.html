@@ -239,9 +239,9 @@ function clearMiniGraphData() {
             // Show success message
             alert('Mini-graph data has been cleared successfully! All graphs will be reset to empty state when you return to the dashboard.');
             
-            console.log('Mini-graph localStorage data cleared by user');
+            debug('Mini-graph localStorage data cleared by user');
         } catch (error) {
-            console.error('Error clearing mini-graph data:', error);
+            error('Error clearing mini-graph data:', error);
             alert('Error clearing data: ' + error.message);
         }
     }
@@ -267,15 +267,15 @@ function clearDatabaseHistory() {
                 })
             })
             .then(response => {
-                console.log('Response status:', response.status);
-                console.log('Response headers:', response.headers);
+                debug('Response status:', response.status);
+                debug('Response headers:', response.headers);
                 
                 // Check if response is JSON
                 const contentType = response.headers.get('content-type');
                 if (!contentType || !contentType.includes('application/json')) {
                     // Response is not JSON, get text to see what it actually is
                     return response.text().then(text => {
-                        console.error('Non-JSON response received:', text);
+                        error('Non-JSON response received:', text);
                         throw new Error(`Server returned non-JSON response (${response.status}): ${text.substring(0, 200)}`);
                     });
                 }
@@ -283,16 +283,16 @@ function clearDatabaseHistory() {
                 return response.json();
             })
             .then(data => {
-                console.log('Response data:', data);
+                debug('Response data:', data);
                 if (data.success) {
                     alert('✅ Database history has been cleared successfully!\n\nAll historical data has been permanently deleted from the database.');
-                    console.log('Database history cleared by user');
+                    debug('Database history cleared by user');
                 } else {
                     throw new Error(data.error || 'Unknown error occurred');
                 }
             })
             .catch(error => {
-                console.error('Error clearing database history:', error);
+                error('Error clearing database history:', error);
                 alert('❌ Error clearing database history: ' + error.message);
             })
             .finally(() => {
@@ -301,7 +301,7 @@ function clearDatabaseHistory() {
                 button.disabled = false;
             });
         } catch (error) {
-            console.error('Error in clearDatabaseHistory function:', error);
+            error('Error in clearDatabaseHistory function:', error);
             alert('Error: ' + error.message);
             // Restore button state on error
             const button = event.target.closest('button');

@@ -151,6 +151,54 @@
 
 {% block extra_js %}
 <script>
+    // ===== DASHBOARD LOGGING SYSTEM =====
+    // Configure logging level: 'debug', 'info', 'warn', 'error', or 'none'
+    const DASHBOARD_LOG_LEVEL = 'none'; // Change to 'debug' for development, 'none' for production
+    
+    const DASHBOARD_LOG_LEVELS = {
+        'none': 0,
+        'error': 1,
+        'warn': 2,
+        'info': 3,
+        'debug': 4
+    };
+    
+    const dashboardCurrentLogLevel = DASHBOARD_LOG_LEVELS[DASHBOARD_LOG_LEVEL] || DASHBOARD_LOG_LEVELS['info'];
+    
+    function dashboardLog(level, message, ...args) {
+        const levelNum = DASHBOARD_LOG_LEVELS[level] || 0;
+        if (levelNum <= dashboardCurrentLogLevel && levelNum > 0) {
+            const timestamp = new Date().toLocaleTimeString('en-GB', { hour12: false });
+            const prefix = `[${timestamp}] [DASHBOARD-${level.toUpperCase()}]`;
+            
+            switch(level) {
+                case 'error':
+                    console.error(prefix, message, ...args);
+                    break;
+                case 'warn':
+                    console.warn(prefix, message, ...args);
+                    break;
+                case 'info':
+                    console.info(prefix, message, ...args);
+                    break;
+                case 'debug':
+                    console.log(prefix, message, ...args);
+                    break;
+            }
+        }
+    }
+    
+    // Convenience functions
+    function debug(message, ...args) { dashboardLog('debug', message, ...args); }
+    function info(message, ...args) { dashboardLog('info', message, ...args); }
+    function warn(message, ...args) { dashboardLog('warn', message, ...args); }
+    function error(message, ...args) { dashboardLog('error', message, ...args); }
+    
+    // Log system initialization
+    info('BandaskApp dashboard logging system initialized with level:', DASHBOARD_LOG_LEVEL);
+    
+    // ===== END DASHBOARD LOGGING SYSTEM =====
+    
     // Global storage for mini-graph data to persist across tab switches
     // miniGraphData is declared in base.html
     
@@ -173,9 +221,9 @@
             
             localStorage.setItem(MINI_GRAPH_STORAGE_KEY, JSON.stringify(dataToSave));
             localStorage.setItem(MINI_GRAPH_TIMESTAMP_KEY, Date.now().toString());
-            console.log('Mini-graph data saved to localStorage:', dataToSave);
+            debug('Mini-graph data saved to localStorage:', dataToSave);
         } catch (error) {
-            console.error('Error saving mini-graph data to localStorage:', error);
+            error('Error saving mini-graph data to localStorage:', error);
         }
     }
     
@@ -191,16 +239,16 @@
                 
                 // Only restore data if it's less than 1 hour old
                 if (dataAge < 3600000) {
-                    console.log('Restoring mini-graph data from localStorage:', parsedData);
+                    debug('Restoring mini-graph data from localStorage:', parsedData);
                     return parsedData;
                 } else {
-                    console.log('Mini-graph data is too old, clearing localStorage');
+                    debug('Mini-graph data is too old, clearing localStorage');
                     localStorage.removeItem(MINI_GRAPH_STORAGE_KEY);
                     localStorage.removeItem(MINI_GRAPH_TIMESTAMP_KEY);
                 }
             }
         } catch (error) {
-            console.error('Error loading mini-graph data from localStorage:', error);
+            error('Error loading mini-graph data from localStorage:', error);
         }
         return {};
     }
@@ -209,7 +257,7 @@
     function restoreMiniGraphData(savedData) {
         Object.keys(savedData).forEach(key => {
             if (miniGraphData[key] && savedData[key].data) {
-                console.log(`Restoring ${key} mini-graph with ${savedData[key].data.length} data points`);
+                debug(`Restoring ${key} mini-graph with ${savedData[key].data.length} data points`);
                 
                 // Restore data
                 miniGraphData[key].data.length = 0; // Clear existing data
@@ -237,7 +285,7 @@
     
     // Function to manually force render all mini-graphs (for debugging)
     window.forceRenderAllMiniGraphs = function() {
-        console.log('Manual force render requested');
+        debug('Manual force render requested');
         Object.keys(miniGraphData).forEach(key => {
             if (miniGraphData[key]) {
                 if (miniGraphData[key].resizeCanvas) {
@@ -254,22 +302,22 @@
     function createMiniGraph(canvasId, color, baseOffset = 0) {
         const canvasContainer = document.getElementById(canvasId);
         if (!canvasContainer) {
-            console.error(`Canvas container ${canvasId} not found`);
+            error(`Canvas container ${canvasId} not found`);
             return null;
         }
         const canvas = canvasContainer.querySelector('canvas');
         if (!canvas) {
-            console.error(`Canvas element not found in container ${canvasId}`);
+            error(`Canvas element not found in container ${canvasId}`);
             return null;
         }
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-            console.error(`Could not get 2D context for canvas in ${canvasId}`);
+            error(`Could not get 2D context for canvas in ${canvasId}`);
             return null;
         }
         
-        console.log(`Successfully created mini graph for ${canvasId}, container:`, canvasContainer, 'canvas:', canvas, 'ctx:', ctx);
-        console.log(`${canvasId} initial canvas size: ${canvas.width}x${canvas.height}`);
+        debug(`Successfully created mini graph for ${canvasId}, container:`, canvasContainer, 'canvas:', canvas, 'ctx:', ctx);
+        debug(`${canvasId} initial canvas size: ${canvas.width}x${canvas.height}`);
 
         // Initialize or retrieve data from global storage
         // Extract the key from canvasId (remove 'mini-graph-' prefix)
@@ -279,7 +327,7 @@
         }
         const data = miniGraphData[key];
         
-        console.log(`${canvasId} initialized with ${data.length} data points`);
+        debug(`${canvasId} initialized with ${data.length} data points`);
         
         const ZOOM_LEVELS = [1, 2, 4, 8, 16, 32, 64, 128];
         let currentZoomIndex = 0;
@@ -313,22 +361,22 @@
                     canvas.width = colWidth - 8; // Subtract padding from col-8
                     canvas.height = contentHeight; // Match col-4 height exactly
                     
-                    console.log(`Canvas resized to ${canvas.width}x${canvas.height} for ${canvasId} (col-8 width: ${colWidth}, h5: ${h5Height}, temp: ${tempDisplayHeight}, small: ${smallHeight}, total: ${contentHeight})`);
+                    debug(`Canvas resized to ${canvas.width}x${canvas.height} for ${canvasId} (col-8 width: ${colWidth}, h5: ${h5Height}, temp: ${tempDisplayHeight}, small: ${smallHeight}, total: ${contentHeight})`);
                     
                     // Immediately redraw the graph with existing data after resize
                     if (data.length > 0) {
-                        console.log(`Redrawing ${canvasId} with ${data.length} data points after resize`);
+                        debug(`Redrawing ${canvasId} with ${data.length} data points after resize`);
                         drawGraph();
                     }
                 } else {
                     // Fallback: use a reasonable height
                     canvas.width = colWidth - 8;
                     canvas.height = 80; // Default height
-                    console.log(`Canvas resized to ${canvas.width}x${canvas.height} for ${canvasId} (fallback height)`);
+                    debug(`Canvas resized to ${canvas.width}x${canvas.height} for ${canvasId} (fallback height)`);
                     
                     // Immediately redraw the graph with existing data after resize
                     if (data.length > 0) {
-                        console.log(`Redrawing ${canvasId} with ${data.length} data points after resize (fallback)`);
+                        debug(`Redrawing ${canvasId} with ${data.length} data points after resize (fallback)`);
                         drawGraph();
                     }
                 }
@@ -341,26 +389,26 @@
                 canvas.width = width;
                 canvas.height = height;
                 
-                console.log(`Canvas resized to ${canvas.width}x${canvas.height} for ${canvasId} (fallback)`);
+                debug(`Canvas resized to ${canvas.width}x${canvas.height} for ${canvasId} (fallback)`);
                 
                 // Immediately redraw the graph with existing data after resize
                 if (data.length > 0) {
-                    console.log(`Redrawing ${canvasId} with ${data.length} data points after resize (container fallback)`);
+                    debug(`Redrawing ${canvasId} with ${data.length} data points after resize (container fallback)`);
                     drawGraph();
                 }
             }
         }
         resizeCanvas();
-        console.log(`${canvasId} mini-graph created successfully`);
+        info(`${canvasId} mini-graph created successfully`);
         window.addEventListener('resize', resizeCanvas);
 
         // Draw the scrolling real-time graph
         function drawGraph() {
-            console.log(`drawGraph called for ${canvasId}, data length: ${data.length}, zoom: ${ZOOM_LEVELS[currentZoomIndex]}x`); // Debug log
+            debug(`drawGraph called for ${canvasId}, data length: ${data.length}, zoom: ${ZOOM_LEVELS[currentZoomIndex]}x`); // Debug log
             
             // Check if canvas dimensions are valid
             if (canvas.width <= 0 || canvas.height <= 0) {
-                console.error(`${canvasId} invalid canvas dimensions: ${canvas.width}x${canvas.height}, skipping draw`);
+                error(`${canvasId} invalid canvas dimensions: ${canvas.width}x${canvas.height}, skipping draw`);
                 return;
             }
             
@@ -382,7 +430,7 @@
                 ctx.font = '12px Arial';
                 ctx.textAlign = 'center';
                 ctx.fillText('No data yet', canvas.width / 2, canvas.height / 2);
-                console.log(`${canvasId} no data, drawing empty state`);
+                warn(`${canvasId} no data, drawing empty state`);
                 return;
             }
             
@@ -397,9 +445,9 @@
             const startIndex = Math.max(0, data.length - maxVisiblePoints);
             const visibleData = data.slice(startIndex);
             
-            console.log(`${canvasId} debug: data.length=${data.length}, visibleData.length=${visibleData.length}, zoomLevel=${zoomLevel}, canvas.width=${canvas.width}`);
+            debug(`${canvasId} debug: data.length=${data.length}, visibleData.length=${visibleData.length}, zoomLevel=${zoomLevel}, canvas.width=${canvas.width}`);
             if (visibleData.length > 0) {
-                console.log(`${canvasId} debug: visibleData sample:`, visibleData.slice(0, 5));
+                debug(`${canvasId} debug: visibleData sample:`, visibleData.slice(0, 5));
             }
             
             // Calculate dynamic Y-axis range with 5% padding
@@ -436,19 +484,19 @@
                     yRange = maxY - minY;
                     
                     // Debug logging for auto-scaling
-                    console.log(`${canvasId} auto-scaling: data range ${Math.min(...visibleData).toFixed(1)}-${Math.max(...visibleData).toFixed(1)}°C, Y-axis ${minY.toFixed(1)}-${maxY.toFixed(1)}°C (${yRange.toFixed(1)}°C total) - 10% padding`);
+                    debug(`${canvasId} auto-scaling: data range ${Math.min(...visibleData).toFixed(1)}-${Math.max(...visibleData).toFixed(1)}°C, Y-axis ${minY.toFixed(1)}-${maxY.toFixed(1)}°C (${yRange.toFixed(1)}°C total) - 10% padding`);
                 }
             } catch (error) {
                 // Fallback to default range if calculation fails
-                console.error(`${canvasId} auto-scaling error:`, error);
+                error(`${canvasId} auto-scaling error:`, error);
                 minY = 15;
                 maxY = 95;
                 yRange = maxY - minY;
             }
             
-            console.log(`${canvasId} drawing: ${visibleData.length} visible points (startIndex: ${startIndex}, total: ${data.length})`);
+            debug(`${canvasId} drawing: ${visibleData.length} visible points (startIndex: ${startIndex}, total: ${data.length})`);
             if (visibleData.length > 0) {
-                console.log(`${canvasId} data range: ${visibleData[0]}°C (oldest, left) to ${visibleData[visibleData.length-1]}°C (newest, right)`);
+                debug(`${canvasId} data range: ${visibleData[0]}°C (oldest, left) to ${visibleData[visibleData.length-1]}°C (newest, right)`);
             }
             
             if (visibleData.length < 2) {
@@ -560,12 +608,12 @@
             // Implement FIFO: if buffer is full, remove oldest data from the left (beginning)
             if (data.length > MAX_BUFFER_SIZE) {
                 const removedValue = data.shift(); // Remove first element (oldest data)
-                console.log(`${canvasId} FIFO: removed oldest value ${removedValue}°C, buffer now ${data.length}/${MAX_BUFFER_SIZE}`);
+                debug(`${canvasId} FIFO: removed oldest value ${removedValue}°C, buffer now ${data.length}/${MAX_BUFFER_SIZE}`);
             }
             
             // Debug: Log buffer status occasionally (every 1000 updates)
             if (data.length % 1000 === 0) {
-                console.log(`${canvasId} buffer: ${data.length}/${MAX_BUFFER_SIZE} points (${(data.length/MAX_BUFFER_SIZE*100).toFixed(1)}% full)`);
+                debug(`${canvasId} buffer: ${data.length}/${MAX_BUFFER_SIZE} points (${(data.length/MAX_BUFFER_SIZE*100).toFixed(1)}% full)`);
             }
             
             drawGraph();
@@ -582,7 +630,7 @@
         function zoomOut() {
             if (currentZoomIndex < ZOOM_LEVELS.length - 1) {
                 currentZoomIndex++;
-                console.log(`Zoomed out to ${ZOOM_LEVELS[currentZoomIndex]}x for ${canvasId}`);
+                debug(`Zoomed out to ${ZOOM_LEVELS[currentZoomIndex]}x for ${canvasId}`);
                 drawGraph();
             }
         }
@@ -590,7 +638,7 @@
         function zoomIn() {
             if (currentZoomIndex > 0) {
                 currentZoomIndex--;
-                console.log(`Zoomed in to ${ZOOM_LEVELS[currentZoomIndex]}x for ${canvasId}`);
+                debug(`Zoomed in to ${ZOOM_LEVELS[currentZoomIndex]}x for ${canvasId}`);
                 drawGraph();
             }
         }
@@ -631,7 +679,7 @@
                 const index = ZOOM_LEVELS.indexOf(level);
                 if (index !== -1) {
                     currentZoomIndex = index;
-                    console.log(`Zoom level set to ${level}x for ${canvasId}`);
+                    debug(`Zoom level set to ${level}x for ${canvasId}`);
                     drawGraph();
                 }
             },
@@ -650,15 +698,15 @@
     
     // Initialize mini graphs
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOMContentLoaded event fired'); // Debug log
+        debug('DOMContentLoaded event fired'); // Debug log
         
         // Load existing mini-graph data from localStorage
         const savedData = loadMiniGraphData();
         if (Object.keys(savedData).length > 0) {
-            console.log('Restoring mini-graph data from localStorage:', savedData);
+            debug('Restoring mini-graph data from localStorage:', savedData);
             restoreMiniGraphData(savedData);
         } else {
-            console.log('No existing mini-graph data found in localStorage, starting fresh.');
+            debug('No existing mini-graph data found in localStorage, starting fresh.');
         }
         
         // Check if canvas elements exist and create a dynamic list based on enabled sensors
@@ -673,12 +721,12 @@
             }
         }
         
-        console.log('Canvas elements found:', canvasElements); // Debug log
+        debug('Canvas elements found:', canvasElements); // Debug log
         
         // Only create mini graphs for elements that exist AND don't already exist
         Object.keys(canvasElements).forEach(key => {
             if (canvasElements[key] && !miniGraphData[key]) {
-                console.log(`Creating mini graph for ${key}`); // Debug log
+                debug(`Creating mini graph for ${key}`); // Debug log
                 let miniGraph = null;
                 
                 // Extract index from key (e.g., 'thermometer-0' -> 0)
@@ -697,11 +745,11 @@
                 
                 if (miniGraph) {
                     miniGraphData[key] = miniGraph; // Store in global data object
-                    console.log(`Mini graph for ${key} created successfully`);
+                    info(`Mini graph for ${key} created successfully`);
                     
                     // Restore data if available
                     if (savedData[key] && savedData[key].data) {
-                        console.log(`Restoring ${key} data: ${savedData[key].data.length} points`);
+                        info(`Restoring ${key} data: ${savedData[key].data.length} points`);
                         miniGraph.data.length = 0;
                         miniGraph.data.push(...savedData[key].data);
                         
@@ -720,26 +768,26 @@
                         }, 100);
                     }
                 } else {
-                    console.error(`Failed to create mini graph for ${key}`);
+                    error(`Failed to create mini graph for ${key}`);
                 }
             } else if (miniGraphData[key]) {
-                console.log(`Mini graph for ${key} already exists, preserving data`);
+                debug(`Mini graph for ${key} already exists, preserving data`);
                 // Mini graph already exists, just redraw it with existing data
                 if (miniGraphData[key].drawGraph) {
                     miniGraphData[key].drawGraph();
                 }
             } else {
-                console.log(`Canvas element for ${key} not found`); // Debug log
+                warn(`Canvas element for ${key} not found`); // Debug log
             }
         });
         
-        console.log('Mini graphs status:', Object.keys(miniGraphData)); // Debug log
+        debug('Mini graphs status:', Object.keys(miniGraphData)); // Debug log
         
         // Don't clear existing data - preserve it across tab switches
         if (Object.keys(miniGraphData).length > 0) {
-            console.log('Preserving existing mini graph data across tab switch');
+            debug('Preserving existing mini graph data across tab switch');
         } else {
-            console.log('No existing mini graphs found, starting fresh');
+            debug('No existing mini graphs found, starting fresh');
         }
         
         // Set up periodic auto-save every 30 seconds
@@ -748,23 +796,23 @@
         // Save data when page becomes hidden (switching tabs)
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) {
-                console.log('Page hidden, saving mini-graph data');
+                debug('Page hidden, saving mini-graph data');
                 saveMiniGraphData();
             } else {
-                console.log('Page visible, checking for data updates');
+                debug('Page visible, checking for data updates');
                 // Data will be restored from localStorage if available
             }
         });
         
         // Save data when page is about to unload
         window.addEventListener('beforeunload', function() {
-            console.log('Page unloading, saving mini-graph data');
+            debug('Page unloading, saving mini-graph data');
             saveMiniGraphData();
         });
         
         // Force resize after a short delay to ensure CSS is applied
         setTimeout(() => {
-            console.log('Forcing mini-graph resize...');
+            debug('Forcing mini-graph resize...');
             Object.keys(miniGraphData).forEach(key => {
                 if (miniGraphData[key] && miniGraphData[key].resizeCanvas) {
                     miniGraphData[key].resizeCanvas();
@@ -774,7 +822,7 @@
         
         // Additional resize after a longer delay to ensure all elements are properly rendered
         setTimeout(() => {
-            console.log('Second mini-graph resize to ensure proper heights...');
+            debug('Second mini-graph resize to ensure proper heights...');
             Object.keys(miniGraphData).forEach(key => {
                 if (miniGraphData[key] && miniGraphData[key].resizeCanvas) {
                     miniGraphData[key].resizeCanvas();
@@ -784,7 +832,7 @@
         
         // Global resize handler for all mini-graphs
         window.addEventListener('resize', () => {
-            console.log('Window resized, updating all mini-graphs...');
+            debug('Window resized, updating all mini-graphs...');
             setTimeout(() => {
                 Object.keys(miniGraphData).forEach(key => {
                     if (miniGraphData[key] && miniGraphData[key].resizeCanvas) {
@@ -796,7 +844,7 @@
         
         // Function to force immediate rendering of all mini-graphs
         function forceRenderAllMiniGraphs() {
-            console.log('Forcing immediate render of all mini-graphs');
+            debug('Forcing immediate render of all mini-graphs');
             Object.keys(miniGraphData).forEach(key => {
                 if (miniGraphData[key]) {
                     if (miniGraphData[key].resizeCanvas) {
@@ -815,19 +863,19 @@
         // Also force render when page becomes visible
         document.addEventListener('visibilitychange', function() {
             if (!document.hidden) {
-                console.log('Page became visible, forcing mini-graph render');
+                debug('Page became visible, forcing mini-graph render');
                 setTimeout(forceRenderAllMiniGraphs, 100);
             }
         });
         
-        console.log('Mini graphs initialized with data persistence');
+        debug('Mini graphs initialized with data persistence');
     });
     
             // Fallback initialization - try again when page is fully loaded
         window.addEventListener('load', function() {
-            console.log('Window load event fired'); // Debug log
+            debug('Window load event fired'); // Debug log
             if (Object.keys(miniGraphData).length === 0) {
-                console.log('Mini graphs not initialized, trying again...'); // Debug log
+                debug('Mini graphs not initialized, trying again...'); // Debug log
                 // Force re-initialization only if no graphs exist
                 const canvasElements = {};
                 
@@ -851,7 +899,7 @@
                 
                 Object.keys(canvasElements).forEach(key => {
                     if (canvasElements[key] && !miniGraphData[key]) {
-                        console.log(`Creating mini graph for ${key} (fallback)`); // Debug log
+                        debug(`Creating mini graph for ${key} (fallback)`); // Debug log
                         if (key === 'dhw-1') {
                             miniGraphData[key] = createMiniGraph('mini-graph-' + key, '#ff6b6b', 0);
                         } else if (key.startsWith('heating')) {
@@ -866,10 +914,10 @@
                 });
                 
                 if (Object.keys(miniGraphData).length > 0) {
-                    console.log('Fallback initialization successful');
+                    debug('Fallback initialization successful');
                 }
             } else {
-                console.log('Mini graphs already exist, preserving data across tab switch');
+                debug('Mini graphs already exist, preserving data across tab switch');
                 // Redraw existing graphs with their data
                 Object.keys(miniGraphData).forEach(key => {
                     if (miniGraphData[key] && miniGraphData[key].drawGraph) {
@@ -904,23 +952,23 @@
         
 
         
-        console.log('updateMiniGraphs called, DHW temps:', dhwTemp, dhwTemp2, dhwTemp3); // Debug log
+        debug('updateMiniGraphs called, DHW temps:', dhwTemp, dhwTemp2, dhwTemp3); // Debug log
         
         // Update DHW Top mini graph - only if sensor is enabled
         if (!isNaN(dhwTemp) && miniGraphData['thermometer-0']) {
-            console.log('Updating thermometer-0 mini graph with:', dhwTemp); // Debug log
+            debug('Updating thermometer-0 mini graph with:', dhwTemp); // Debug log
             miniGraphData['thermometer-0'].updateData(dhwTemp);
         }
         
         // Update DHW Middle mini graph - only if sensor is enabled
         if (!isNaN(dhwTemp2) && miniGraphData['thermometer-1']) {
-            console.log('Updating thermometer-1 mini graph with:', dhwTemp2); // Debug log
+            debug('Updating thermometer-1 mini graph with:', dhwTemp2); // Debug log
             miniGraphData['thermometer-1'].updateData(dhwTemp2);
         }
         
         // Update DHW Bottom mini graph - only if sensor is enabled
         if (!isNaN(dhwTemp3) && miniGraphData['thermometer-2']) {
-            console.log('Updating thermometer-2 mini graph with:', dhwTemp3); // Debug log
+            debug('Updating thermometer-2 mini graph with:', dhwTemp3); // Debug log
             miniGraphData['thermometer-2'].updateData(dhwTemp3);
         }
         
@@ -929,11 +977,11 @@
         // Update bottom graphs (still using calculated values for now) - only if DHW 1 is enabled
         if (!isNaN(dhwTemp)) {
             if (miniGraphData['thermometer-3']) {
-                console.log('Updating thermometer-3 mini graph with:', dhwTemp - 15); // Debug log
+                debug('Updating thermometer-3 mini graph with:', dhwTemp - 15); // Debug log
                 miniGraphData['thermometer-3'].updateData(dhwTemp - 15);
             }
             if (miniGraphData['thermometer-4']) {
-                console.log('Updating thermometer-4 mini graph with:', dhwTemp - 20); // Debug log
+                debug('Updating thermometer-4 mini graph with:', dhwTemp - 20); // Debug log
                 miniGraphData['thermometer-4'].updateData(dhwTemp - 20);
             }
         }
@@ -941,17 +989,17 @@
     
     // Function to refresh mini graphs with current temperature data
     function refreshMiniGraphs() {
-        console.log('refreshMiniGraphs called - preserving existing data');
+        debug('refreshMiniGraphs called - preserving existing data');
         
         // Don't clear existing data - just redraw with current data
         Object.keys(miniGraphData).forEach(key => {
             if (miniGraphData[key] && miniGraphData[key].drawGraph) {
-                console.log(`Redrawing ${key} mini graph with existing data`);
+                debug(`Redrawing ${key} mini graph with existing data`);
                 miniGraphData[key].drawGraph();
             }
         });
         
-        console.log('Mini graphs refreshed while preserving data');
+        debug('Mini graphs refreshed while preserving data');
     }
     
     // Make functions globally available so they can be called from base template
@@ -960,7 +1008,7 @@
     
     // Test function to manually add data to mini-graphs
     window.testMiniGraphData = function() {
-        console.log('Testing mini graph data flow...');
+        debug('Testing mini graph data flow...');
         
         // Get current DHW temperature from enabled sensors
         let dhwTemp = null;
@@ -969,23 +1017,23 @@
             dhwTemp = parseFloat(dhwTempElement.textContent);
         }
         
-        console.log('Current DHW temp:', dhwTemp);
+        debug('Current DHW temp:', dhwTemp);
         
         if (!isNaN(dhwTemp)) {
             // Manually add data to each mini graph that exists
             Object.keys(miniGraphData).forEach(key => {
                 if (miniGraphData[key]) {
-                    console.log(`Adding data to ${key} mini graph`);
+                    debug(`Adding data to ${key} mini graph`);
                     miniGraphData[key].updateData(dhwTemp);
                 }
             });
-            console.log('Data added to all mini graphs');
+            debug('Data added to all mini graphs');
         } else {
-            console.log('DHW temperature not available, using test value 50');
+            debug('DHW temperature not available, using test value 50');
             // Use test value if no real temperature
             Object.keys(miniGraphData).forEach(key => {
                 if (miniGraphData[key]) {
-                    console.log(`Adding test data to ${key} mini graph`);
+                    debug(`Adding test data to ${key} mini graph`);
                     miniGraphData[key].updateData(50);
                 }
             });
@@ -994,39 +1042,39 @@
     
     // Function to check mini-graph dimensions
     window.checkMiniGraphDimensions = function() {
-        console.log('Checking mini-graph dimensions...');
+        debug('Checking mini-graph dimensions...');
         
         Object.keys(miniGraphData).forEach(key => {
             if (miniGraphData[key]) {
                 const container = document.getElementById('mini-graph-' + key);
                 const canvas = miniGraphData[key].canvas;
                 
-                console.log(`${key}:`);
-                console.log(`  Container CSS width: ${getComputedStyle(container).width}`);
-                console.log(`  Container CSS height: ${getComputedStyle(container).height}`);
-                console.log(`  Canvas width: ${canvas.width}`);
-                console.log(`  Canvas height: ${canvas.height}`);
-                console.log(`  Container offsetWidth: ${container.offsetWidth}`);
-                console.log(`  Container offsetHeight: ${container.offsetHeight}`);
+                debug(`${key}:`);
+                debug(`  Container CSS width: ${getComputedStyle(container).width}`);
+                debug(`  Container CSS height: ${getComputedStyle(container).height}`);
+                debug(`  Canvas width: ${canvas.width}`);
+                debug(`  Canvas height: ${canvas.height}`);
+                debug(`  Container offsetWidth: ${container.offsetWidth}`);
+                debug(`  Container offsetHeight: ${container.offsetHeight}`);
             }
         });
     };
     
     // Test function for debugging mini graphs
     function testMiniGraphs() {
-        console.log('Testing mini graphs...');
-        console.log('Available mini graphs:', Object.keys(miniGraphData));
+        debug('Testing mini graphs...');
+        debug('Available mini graphs:', Object.keys(miniGraphData));
         
         // Test with sample data
         const testTemp = 50;
         Object.keys(miniGraphData).forEach(key => {
             if (miniGraphData[key]) {
-                console.log(`Testing ${key} mini graph`);
+                debug(`Testing ${key} mini graph`);
                 miniGraphData[key].updateData(testTemp);
             }
         });
         
-        console.log('Mini graph test completed');
+        debug('Mini graph test completed');
     }
     
     // Make test function globally available
@@ -1034,7 +1082,7 @@
     
     // Manual initialization function
     window.initializeMiniGraphsManually = function() {
-        console.log('Manual initialization of mini graphs...');
+        debug('Manual initialization of mini graphs...');
         
         const canvasElements = {};
         
@@ -1056,7 +1104,7 @@
         }
 
         
-        console.log('Canvas elements found:', canvasElements);
+        debug('Canvas elements found:', canvasElements);
         
         // Clear existing mini graphs
         Object.keys(miniGraphData).forEach(key => {
@@ -1066,7 +1114,7 @@
         // Create new mini graphs
         Object.keys(canvasElements).forEach(key => {
             if (canvasElements[key]) {
-                console.log(`Creating mini graph for ${key}`);
+                debug(`Creating mini graph for ${key}`);
                 let miniGraph = null;
                 
                 if (key === 'dhw-1') {
@@ -1082,14 +1130,14 @@
                 
                 if (miniGraph) {
                     miniGraphData[key] = miniGraph;
-                    console.log(`Mini graph for ${key} created successfully`);
+                    info(`Mini graph for ${key} created successfully`);
                 } else {
-                    console.error(`Failed to create mini graph for ${key}`);
+                    error(`Failed to create mini graph for ${key}`);
                 }
             }
         });
         
-        console.log('Mini graphs created:', Object.keys(miniGraphData));
+        debug('Mini graphs created:', Object.keys(miniGraphData));
         
         // Populate with test data
         if (Object.keys(miniGraphData).length > 0) {
@@ -1097,7 +1145,7 @@
             Object.keys(miniGraphData).forEach(key => {
                 miniGraphData[key].clearData();
             });
-            console.log('Mini graphs cleared and ready for real data');
+            debug('Mini graphs cleared and ready for real data');
         }
         
         return Object.keys(miniGraphData);
@@ -1106,21 +1154,21 @@
     // Additional debugging functions
     window.debugMiniGraph = function(graphName) {
         if (miniGraphData[graphName]) {
-            console.log(`Debugging ${graphName}:`, miniGraphData[graphName]);
-            console.log(`Canvas:`, miniGraphData[graphName].canvas);
-            console.log(`Data:`, miniGraphData[graphName].data);
+            debug(`Debugging ${graphName}:`, miniGraphData[graphName]);
+            debug(`Canvas:`, miniGraphData[graphName].canvas);
+            debug(`Data:`, miniGraphData[graphName].data);
             miniGraphData[graphName].drawTestPattern();
         } else {
-            console.log(`Mini graph ${graphName} not found. Available:`, Object.keys(miniGraphData));
+            debug(`Mini graph ${graphName} not found. Available:`, Object.keys(miniGraphData));
         }
     };
     
     window.forceUpdateMiniGraph = function(graphName, temperature) {
         if (miniGraphData[graphName]) {
-            console.log(`Forcing update of ${graphName} with temperature ${temperature}`);
+            debug(`Forcing update of ${graphName} with temperature ${temperature}`);
             miniGraphData[graphName].updateData(temperature);
         } else {
-            console.log(`Mini graph ${graphName} not found`);
+            debug(`Mini graph ${graphName} not found`);
         }
     };
     
@@ -1190,7 +1238,7 @@
                 }
             }
         } catch (error) {
-            console.error('Error toggling mode:', error);
+            error('Error toggling mode:', error);
         }
     }
 
@@ -1201,7 +1249,7 @@
             // For now, just reload the page to refresh status
             location.reload();
         } catch (error) {
-            console.error('Error syncing relays:', error);
+            error('Error syncing relays:', error);
         }
     }
     
@@ -1240,15 +1288,15 @@
                     }
                     
                     // Show success message
-                    console.log('Winter regime state changed:', data.message);
+                    debug('Winter regime state changed:', data.message);
                 } else {
-                    console.error('Failed to cycle winter regime:', data.error);
+                    error('Failed to cycle winter regime:', data.error);
                 }
             } else {
-                console.error('HTTP error cycling winter regime:', response.status);
+                error('HTTP error cycling winter regime:', response.status);
             }
         } catch (error) {
-            console.error('Error cycling winter regime:', error);
+            error('Error cycling winter regime:', error);
         }
     }
     
@@ -1296,7 +1344,7 @@
                 timerElement.textContent = formatTime(elapsed);
             }
         }, 1000);
-        console.log(`${device} timer started`);
+        debug(`${device} timer started`);
     }
 
     function stopTimer(device) {
@@ -1309,7 +1357,7 @@
         if (timerElement) {
             timerElement.textContent = '00:00';
         }
-        console.log(`${device} timer stopped and reset`);
+        debug(`${device} timer stopped and reset`);
     }
 
     function resetTimer(device) {
@@ -1321,7 +1369,7 @@
     function checkDeviceStateChange(device) {
         const deviceBtn = document.getElementById(`${device}-toggle-btn`);
         if (!deviceBtn) {
-            console.log(`${device} button not found, skipping state check`);
+            debug(`${device} button not found, skipping state check`);
             return;
         }
         
@@ -1329,7 +1377,7 @@
         
         // If this is the first check, just record the state
         if (timers[device].lastState === null) {
-            console.log(`${device} initial state check: ${currentState ? 'ON' : 'OFF'}`);
+            debug(`${device} initial state check: ${currentState ? 'ON' : 'OFF'}`);
             timers[device].lastState = currentState;
             startTimer(device); // Start timer for initial state
             return;
@@ -1337,7 +1385,7 @@
         
         // If state has changed, reset the timer
         if (timers[device].lastState !== currentState) {
-            console.log(`${device} state changed from ${timers[device].lastState ? 'ON' : 'OFF'} to ${currentState ? 'ON' : 'OFF'}, resetting ${device} timer only`);
+            debug(`${device} state changed from ${timers[device].lastState ? 'ON' : 'OFF'} to ${currentState ? 'ON' : 'OFF'}, resetting ${device} timer only`);
             timers[device].lastState = currentState;
             resetTimer(device);
         }
@@ -1365,7 +1413,7 @@
                 const data = await response.json();
                 if (data.success) {
                     // Reset furnace timer immediately when button is clicked
-                    console.log('Furnace button clicked - resetting furnace timer only');
+                    debug('Furnace button clicked - resetting furnace timer only');
                     resetTimer('furnace');
                     timers.furnace.lastState = !isCurrentlyRunning;
                     
@@ -1380,7 +1428,7 @@
                 }
             }
         } catch (error) {
-            console.error('Error toggling furnace:', error);
+            error('Error toggling furnace:', error);
         }
     }
     
@@ -1406,7 +1454,7 @@
                 const data = await response.json();
                 if (data.success) {
                     // Reset pump timer immediately when button is clicked
-                    console.log('Pump button clicked - resetting pump timer only');
+                    debug('Pump button clicked - resetting pump timer only');
                     resetTimer('pump');
                     timers.pump.lastState = !isCurrentlyRunning;
                     
@@ -1421,7 +1469,7 @@
                 }
             }
         } catch (error) {
-            console.error('Error toggling pump:', error);
+            error('Error toggling pump:', error);
         }
     }
 
@@ -1436,7 +1484,7 @@
     
     // Function to initialize timers based on current device states
     function initializeTimers() {
-        console.log('Initializing independent device timers');
+        debug('Initializing independent device timers');
         
         // Check current states and start timers
         checkDeviceStateChange('furnace');
@@ -1472,12 +1520,12 @@
     
     // Function to preserve mini-graph data across tab switches
     function preserveMiniGraphData() {
-        console.log('Preserving mini-graph data across tab switch');
+        debug('Preserving mini-graph data across tab switch');
         
         // Check if mini-graphs already exist and have data
         Object.keys(miniGraphData).forEach(key => {
             if (miniGraphData[key] && miniGraphData[key].data && miniGraphData[key].data.length > 0) {
-                console.log(`Preserving ${key} mini graph with ${miniGraphData[key].data.length} data points`);
+                debug(`Preserving ${key} mini graph with ${miniGraphData[key].data.length} data points`);
                 
                 // Redraw the graph with existing data
                 if (miniGraphData[key].drawGraph) {
@@ -1490,26 +1538,26 @@
     // Call this function when the page becomes visible (returning from another tab)
     document.addEventListener('visibilitychange', function() {
         if (!document.hidden) {
-            console.log('Page became visible, preserving mini-graph data');
+            debug('Page became visible, preserving mini-graph data');
             preserveMiniGraphData();
         }
     });
     
     // Also preserve data when the page is focused
     window.addEventListener('focus', function() {
-        console.log('Window focused, preserving mini-graph data');
+        debug('Window focused, preserving mini-graph data');
         preserveMiniGraphData();
     });
 
     // Function to manually save mini-graph data (for debugging)
     window.saveMiniGraphDataNow = function() {
-        console.log('Manual save requested');
+        debug('Manual save requested');
         saveMiniGraphData();
     };
     
     // Function to clear all mini-graph data (for debugging)
     window.clearAllMiniGraphData = function() {
-        console.log('Clearing all mini-graph data');
+        debug('Clearing all mini-graph data');
         Object.keys(miniGraphData).forEach(key => {
             if (miniGraphData[key]) {
                 miniGraphData[key].clearData();
@@ -1517,45 +1565,45 @@
         });
         localStorage.removeItem(MINI_GRAPH_STORAGE_KEY);
         localStorage.removeItem(MINI_GRAPH_TIMESTAMP_KEY);
-        console.log('All mini-graph data cleared');
+        debug('All mini-graph data cleared');
     };
     
     // Function to show mini-graph data status (for debugging)
     window.showMiniGraphStatus = function() {
-        console.log('Mini-graph data status:');
+        debug('Mini-graph data status:');
         Object.keys(miniGraphData).forEach(key => {
             if (miniGraphData[key]) {
                 const dataLength = miniGraphData[key].data.length;
                 const maxBuffer = 131072;
                 const percentage = (dataLength / maxBuffer * 100).toFixed(1);
-                console.log(`${key}: ${dataLength}/${maxBuffer} data points (${percentage}% full), zoom: ${miniGraphData[key].getZoomLevel()}x`);
+                debug(`${key}: ${dataLength}/${maxBuffer} data points (${percentage}% full), zoom: ${miniGraphData[key].getZoomLevel()}x`);
             }
         });
         
         const savedData = localStorage.getItem(MINI_GRAPH_STORAGE_KEY);
         if (savedData) {
             const parsed = JSON.parse(savedData);
-            console.log('localStorage data summary:');
+            debug('localStorage data summary:');
             Object.keys(parsed).forEach(key => {
                 const dataLength = parsed[key].data ? parsed[key].data.length : 0;
-                console.log(`  ${key}: ${dataLength} points saved`);
+                debug(`  ${key}: ${dataLength} points saved`);
             });
         } else {
-            console.log('No data in localStorage');
+            debug('No data in localStorage');
         }
     };
 
     // Function to manually test data plotting (for debugging)
     window.testDataPlotting = function() {
-        console.log('Testing data plotting...');
+        debug('Testing data plotting...');
         Object.keys(miniGraphData).forEach(key => {
             if (miniGraphData[key]) {
-                console.log(`${key}: ${miniGraphData[key].data.length} data points`);
+                debug(`${key}: ${miniGraphData[key].data.length} data points`);
                 if (miniGraphData[key].data.length > 0) {
-                    console.log(`${key} data:`, miniGraphData[key].data.slice(-5)); // Last 5 points
+                    debug(`${key} data:`, miniGraphData[key].data.slice(-5)); // Last 5 points
                 }
                 if (miniGraphData[key].drawGraph) {
-                    console.log(`Drawing ${key} graph...`);
+                    debug(`Drawing ${key} graph...`);
                     miniGraphData[key].drawGraph();
                 }
             }
@@ -1564,15 +1612,15 @@
     
     // Function to add test data to all graphs (for debugging)
     window.addTestData = function() {
-        console.log('Adding test data to all graphs...');
+        debug('Adding test data to all graphs...');
         const testTemp = 50;
         Object.keys(miniGraphData).forEach(key => {
             if (miniGraphData[key]) {
-                console.log(`Adding test data to ${key}`);
+                debug(`Adding test data to ${key}`);
                 miniGraphData[key].updateData(testTemp);
             }
         });
-        console.log('Test data added to all available mini graphs');
+        debug('Test data added to all available mini graphs');
     };
 </script>
 {% endblock %}
