@@ -212,6 +212,34 @@ class ControlView(View):
                         'error': 'Failed to turn furnace OFF'
                     }, status=500)
                     
+            elif action == 'pump_on':
+                # Manually turn pump ON
+                success = controller.manual_control_pump(True)
+                if success:
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Pump turned ON manually'
+                    })
+                else:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Failed to turn pump ON'
+                    }, status=500)
+                    
+            elif action == 'pump_off':
+                # Manually turn pump OFF
+                success = controller.manual_control_pump(False)
+                if success:
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Pump turned OFF manually'
+                    })
+                else:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Failed to turn pump OFF'
+                    }, status=500)
+                    
             elif action == 'sync_relays':
                 # Synchronize relay states
                 controller.sync_relay_states()

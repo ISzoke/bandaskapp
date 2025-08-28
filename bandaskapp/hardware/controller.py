@@ -442,6 +442,41 @@ class HardwareController:
             self._log_system_event('error', f'Error in manual furnace control: {e}')
             return False
     
+    def manual_control_pump(self, state: bool) -> bool:
+        """
+        Manually control pump (override automatic control)
+        
+        Args:
+            state: True for ON, False for OFF
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            pump = Relay.objects.get(circuit_id=self.config['PUMP_RELAY_ID'])
+            
+            success = self._set_relay_state(pump, state)
+            if success:
+                # Update system state
+                system_state = SystemState.load()
+                system_state.pump_running = state
+                system_state.save()
+                
+                # Log manual action
+                action = "ON" if state else "OFF"
+                self._log_system_event('info', f'Pump manually set to {action}')
+                
+                return True
+            
+            return False
+            
+        except Relay.DoesNotExist:
+            self._log_system_event('error', 'Pump relay not found in database')
+            return False
+        except Exception as e:
+            self._log_system_event('error', f'Error in manual pump control: {e}')
+            return False
+    
     def _set_relay_state(self, relay: Relay, state: bool) -> bool:
         """
         Set relay state and update database
